@@ -220,6 +220,72 @@ func TestSyncRefusesMidRebase(t *testing.T) {
 	}
 }
 
+func TestDoctorClean(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	var out strings.Builder
+	if err := doDoctor(ctx, false, &out); err != nil {
+		t.Fatalf("doDoctor: %v", err)
+	}
+	if !strings.Contains(out.String(), "All clear") {
+		t.Errorf("clean repo should report all clear, got %q", out.String())
+	}
+}
+
+func TestDoctorStaleRegistry(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	if err := doNew(ctx, "feat", "", "", &strings.Builder{}); err != nil {
+		t.Fatalf("doNew: %v", err)
+	}
+	rec, _, _ := ctx.Store.Get("feat")
+	// Simulate the worktree directory vanishing out from under croft.
+	if err := os.RemoveAll(rec.Path); err != nil {
+		t.Fatal(err)
+	}
+
+	var out strings.Builder
+	if err := doDoctor(ctx, false, &out); err != nil {
+		t.Fatalf("doDoctor report: %v", err)
+	}
+	if !strings.Contains(out.String(), "issue") {
+		t.Errorf("doctor should detect the stale entry, got %q", out.String())
+	}
+
+	if err := doDoctor(ctx, true, &strings.Builder{}); err != nil {
+		t.Fatalf("doDoctor --fix: %v", err)
+	}
+	if _, found, _ := ctx.Store.Get("feat"); found {
+		t.Error("stale registry entry should be gone after doctor --fix")
+	}
+}
+
+func TestDoctorOrphanDir(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	// A directory matching the naming pattern but with no registry entry.
+	orphan := filepath.Join(ctx.WorktreeRoot, "demo.ghost")
+	if err := os.MkdirAll(orphan, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	if err := doDoctor(ctx, false, &out); err != nil {
+		t.Fatalf("doDoctor: %v", err)
+	}
+	if !strings.Contains(out.String(), "orphan") {
+		t.Errorf("doctor should detect the orphan directory, got %q", out.String())
+	}
+}
+
 func TestLoadContextWithoutConfig(t *testing.T) {
 	dir := t.TempDir()
 	if out, err := exec.Command("git", "-C", dir, "init").CombinedOutput(); err != nil {
