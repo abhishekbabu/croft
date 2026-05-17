@@ -77,6 +77,19 @@ func doNew(ctx *appContext, branch, from, agentName string, out io.Writer) error
 	if err := ctx.Providers.Infra.Up(pw); err != nil {
 		return fmt.Errorf("bring infra up: %w", err)
 	}
+	url, err := ctx.Providers.Router.Register(pw)
+	if err != nil {
+		return fmt.Errorf("register route: %w", err)
+	}
+	if url != rec.URL {
+		rec.URL = url
+		if err := ctx.Store.Put(rec); err != nil {
+			return err
+		}
+	}
+	if url != "" {
+		fmt.Fprintf(out, "  url:   %s\n", url)
+	}
 	if err := runHooks("post_create", ctx.Config.Hooks.PostCreate, rec.Path, env, out); err != nil {
 		return err
 	}

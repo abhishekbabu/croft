@@ -72,6 +72,9 @@ func doRm(ctx *appContext, branch string, force bool, out io.Writer) error {
 	if err := ctx.Providers.Infra.Down(pw); err != nil {
 		return fmt.Errorf("bring infra down: %w", err)
 	}
+	if err := ctx.Providers.Router.Release(pw); err != nil {
+		return fmt.Errorf("release route: %w", err)
+	}
 	if err := ctx.Providers.Multiplexer.Kill(provider.ProjectName(pw)); err != nil {
 		return fmt.Errorf("kill session: %w", err)
 	}

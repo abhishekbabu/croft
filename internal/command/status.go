@@ -48,6 +48,9 @@ func doStatus(ctx *appContext, branch string, out io.Writer) error {
 	fmt.Fprintf(out, "slug:    %s\n", wt.Slug)
 	fmt.Fprintf(out, "branch:  %s\n", wt.Branch)
 	fmt.Fprintf(out, "path:    %s\n", wt.Path)
+	if wt.URL != "" {
+		fmt.Fprintf(out, "url:     %s\n", wt.URL)
+	}
 	fmt.Fprintf(out, "exists:  %t\n", dirExists(wt.Path))
 	fmt.Fprintf(out, "status:  %s\n", status)
 	fmt.Fprintf(out, "ports:   %s\n", formatPorts(wt.Ports))

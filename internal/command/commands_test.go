@@ -176,6 +176,50 @@ func TestNewWithUnknownAgent(t *testing.T) {
 	}
 }
 
+func TestSyncNoStacker(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	if err := doNew(ctx, "feat", "", "", &strings.Builder{}); err != nil {
+		t.Fatalf("doNew: %v", err)
+	}
+	var out strings.Builder
+	if err := doSync(ctx, "", false, &out); err != nil {
+		t.Fatalf("doSync: %v", err)
+	}
+	if !strings.Contains(out.String(), "feat") || !strings.Contains(out.String(), "synced") {
+		t.Errorf("sync output:\n%s", out.String())
+	}
+}
+
+func TestSyncRefusesMidRebase(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	if err := doNew(ctx, "feat", "", "", &strings.Builder{}); err != nil {
+		t.Fatalf("doNew: %v", err)
+	}
+	rec, _, _ := ctx.Store.Get("feat")
+	gd, err := ctx.Manager.GitDir(rec.Path)
+	if err != nil {
+		t.Fatalf("GitDir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(gd, "rebase-merge"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	if err := doSync(ctx, "feat", false, &out); err == nil {
+		t.Error("doSync should fail when a worktree is mid-rebase")
+	}
+	if !strings.Contains(out.String(), "mid-rebase") {
+		t.Errorf("sync output should mention mid-rebase:\n%s", out.String())
+	}
+}
+
 func TestLoadContextWithoutConfig(t *testing.T) {
 	dir := t.TempDir()
 	if out, err := exec.Command("git", "-C", dir, "init").CombinedOutput(); err != nil {

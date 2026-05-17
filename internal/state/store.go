@@ -26,6 +26,7 @@ type Worktree struct {
 	Branch  string         `json:"branch"`
 	Path    string         `json:"path"`
 	Ports   map[string]int `json:"ports,omitempty"`
+	URL     string         `json:"url,omitempty"`
 	Status  string         `json:"status,omitempty"`
 	Created time.Time      `json:"created"`
 }
