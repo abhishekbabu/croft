@@ -36,6 +36,12 @@ func newRootCmd() *cobra.Command {
 	}
 	root.SetVersionTemplate("croft {{.Version}}\n")
 
-	root.AddCommand(command.NewInitCmd())
+	root.AddCommand(
+		command.NewInitCmd(),
+		command.NewNewCmd(),
+		command.NewLsCmd(),
+		command.NewStatusCmd(),
+		command.NewRmCmd(),
+	)
 	return root
 }
