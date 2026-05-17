@@ -286,6 +286,52 @@ func TestDoctorOrphanDir(t *testing.T) {
 	}
 }
 
+func TestSpawnAndFleet(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+
+	var out strings.Builder
+	if err := doSpawn(ctx, "worker", "noop", "reviewer", repo, &out); err != nil {
+		t.Fatalf("doSpawn: %v", err)
+	}
+	if !strings.Contains(out.String(), "Spawned peer") {
+		t.Errorf("spawn output: %q", out.String())
+	}
+
+	out.Reset()
+	if err := doFleetStatus(ctx, &out); err != nil {
+		t.Fatalf("doFleetStatus: %v", err)
+	}
+	if !strings.Contains(out.String(), "worker") {
+		t.Errorf("fleet status missing peer:\n%s", out.String())
+	}
+
+	out.Reset()
+	if err := doFleetMsg(ctx, "worker", "ship it", &out); err != nil {
+		t.Fatalf("doFleetMsg: %v", err)
+	}
+	if !strings.Contains(out.String(), "Delivered") {
+		t.Errorf("fleet msg output: %q", out.String())
+	}
+	if err := doFleetMsg(ctx, "ghost", "hello", &strings.Builder{}); err == nil {
+		t.Error("dispatch to an unknown peer should error")
+	}
+}
+
+func TestSpawnRequiresAgent(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	if err := doSpawn(ctx, "worker", "", "", repo, &strings.Builder{}); err == nil {
+		t.Error("spawn without --agent should error")
+	}
+}
+
 func TestLoadContextWithoutConfig(t *testing.T) {
 	dir := t.TempDir()
 	if out, err := exec.Command("git", "-C", dir, "init").CombinedOutput(); err != nil {

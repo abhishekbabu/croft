@@ -44,6 +44,8 @@ func newRootCmd() *cobra.Command {
 		command.NewSyncCmd(),
 		command.NewRmCmd(),
 		command.NewDoctorCmd(),
+		command.NewSpawnCmd(),
+		command.NewFleetCmd(),
 	)
 	return root
 }
