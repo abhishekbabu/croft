@@ -107,6 +107,32 @@ func takenPorts(r state.Registry) map[int]bool {
 	return taken
 }
 
+// liveStatus computes a worktree's current status, reconciling what the
+// registry recorded against reality — directory existence, an in-progress
+// rebase, and whether a launched agent's window is still alive.
+func (c *appContext) liveStatus(wt state.Worktree) string {
+	if !dirExists(wt.Path) {
+		return "missing"
+	}
+	if c.Manager.InRebase(wt.Path) {
+		return state.StatusRebase
+	}
+	if wt.Status == state.StatusWorking {
+		mux := c.Providers.Multiplexer
+		if !mux.Managed() {
+			return state.StatusWorking // unmanaged: trust the recorded value
+		}
+		if mux.HasWindow(provider.ProjectName(c.providerWorktree(wt)), "agent") {
+			return state.StatusWorking
+		}
+		return state.StatusDone // the agent's window is gone
+	}
+	if wt.Status != "" {
+		return wt.Status
+	}
+	return "-"
+}
+
 // dirExists reports whether path is an existing directory.
 func dirExists(path string) bool {
 	info, err := os.Stat(path)

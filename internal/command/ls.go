@@ -7,7 +7,6 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	"github.com/abhishekbabu/croft/internal/state"
 	"github.com/spf13/cobra"
 )
 
@@ -53,18 +52,7 @@ func doLs(ctx *appContext, out io.Writer) error {
 	for _, slug := range slugs {
 		wt := reg.Worktrees[slug]
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
-			wt.Slug, wt.Branch, healthLabel(wt), formatPorts(wt.Ports), wt.Path)
+			wt.Slug, wt.Branch, ctx.liveStatus(wt), formatPorts(wt.Ports), wt.Path)
 	}
 	return tw.Flush()
-}
-
-// healthLabel summarizes a worktree's state for the listing.
-func healthLabel(wt state.Worktree) string {
-	if !dirExists(wt.Path) {
-		return "missing"
-	}
-	if wt.Status == "" {
-		return "-"
-	}
-	return wt.Status
 }

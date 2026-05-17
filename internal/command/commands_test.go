@@ -8,8 +8,25 @@ import (
 	"testing"
 
 	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/abhishekbabu/croft/internal/provider"
 	"github.com/abhishekbabu/croft/internal/state"
 )
+
+// fakeMux is a controllable Multiplexer for status-derivation tests.
+type fakeMux struct {
+	managed bool
+	windows map[string]bool // "session:window" -> present
+}
+
+func (f fakeMux) Managed() bool                                         { return f.managed }
+func (f fakeMux) CreateSession(string, string, map[string]string) error { return nil }
+func (f fakeMux) RunWindow(string, string, string, map[string]string, []string) error {
+	return nil
+}
+func (f fakeMux) HasWindow(name, window string) bool              { return f.windows[name+":"+window] }
+func (f fakeMux) Attach(string) error                             { return nil }
+func (f fakeMux) Kill(string) error                               { return nil }
+func (f fakeMux) CapturePane(string, string, int) (string, error) { return "", nil }
 
 // setupRepo builds a git repo (one commit) with a croft.toml and isolated XDG
 // dirs, and returns the repo path.
@@ -214,6 +231,49 @@ func TestDevCommandSubstitution(t *testing.T) {
 	noDev := &appContext{}
 	if got := noDev.devCommand(rec); got != "" {
 		t.Errorf("devCommand with no dev_command = %q, want empty", got)
+	}
+}
+
+func TestLiveStatusDerivation(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	if err := doNew(ctx, "feat", "", "", &strings.Builder{}); err != nil {
+		t.Fatalf("doNew: %v", err)
+	}
+	rec, _, _ := ctx.Store.Get("feat")
+
+	if got := ctx.liveStatus(rec); got != "-" {
+		t.Errorf("no agent: liveStatus = %q, want -", got)
+	}
+
+	session := provider.ProjectName(ctx.providerWorktree(rec))
+	rec.Status = state.StatusWorking
+
+	// Agent window present -> working.
+	ctx.Providers.Multiplexer = fakeMux{managed: true, windows: map[string]bool{session + ":agent": true}}
+	if got := ctx.liveStatus(rec); got != "working" {
+		t.Errorf("agent window present: liveStatus = %q, want working", got)
+	}
+
+	// Agent window gone -> done.
+	ctx.Providers.Multiplexer = fakeMux{managed: true, windows: map[string]bool{}}
+	if got := ctx.liveStatus(rec); got != "done" {
+		t.Errorf("agent window gone: liveStatus = %q, want done", got)
+	}
+
+	// A rebase in progress overrides everything.
+	gd, err := ctx.Manager.GitDir(rec.Path)
+	if err != nil {
+		t.Fatalf("GitDir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(gd, "rebase-merge"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := ctx.liveStatus(rec); got != "rebase" {
+		t.Errorf("mid-rebase: liveStatus = %q, want rebase", got)
 	}
 }
 

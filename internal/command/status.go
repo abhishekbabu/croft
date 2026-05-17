@@ -41,10 +41,7 @@ func doStatus(ctx *appContext, branch string, out io.Writer) error {
 		return fmt.Errorf("no worktree %q (looked up slug %q)", branch, slug)
 	}
 
-	status := wt.Status
-	if status == "" {
-		status = "(none)"
-	}
+	status := ctx.liveStatus(wt)
 	fmt.Fprintf(out, "slug:    %s\n", wt.Slug)
 	fmt.Fprintf(out, "branch:  %s\n", wt.Branch)
 	fmt.Fprintf(out, "path:    %s\n", wt.Path)
