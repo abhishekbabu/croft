@@ -48,7 +48,7 @@ func NewComposeInfra(bin string) *ComposeInfra {
 // compose runs `docker compose -p <project> <args...>` in the worktree, with
 // croft's environment exported so the compose file can read ${SERVICE_PORT}.
 func (c *ComposeInfra) compose(wt Worktree, args ...string) (runResult, error) {
-	full := append([]string{"compose", "-p", ProjectName(wt.Slug)}, args...)
+	full := append([]string{"compose", "-p", ProjectName(wt)}, args...)
 	env := append(os.Environ(), envSlice(Env(wt))...)
 	return run(c.bin, wt.Path, env, full...)
 }

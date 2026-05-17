@@ -12,9 +12,10 @@ import (
 
 // Worktree is the subset of a worktree's state that providers operate on.
 type Worktree struct {
-	Slug  string
-	Path  string
-	Ports map[string]int
+	Project string
+	Slug    string
+	Path    string
+	Ports   map[string]int
 }
 
 // InfraState describes whether a worktree's container stack is running.
@@ -45,9 +46,15 @@ type Peer struct {
 	Status string
 }
 
-// ProjectName returns the per-worktree container/project namespace.
-func ProjectName(slug string) string {
-	return "croft-" + slug
+// ProjectName returns the per-worktree namespace shared by the container stack
+// and the terminal session — "<project>-<slug>", so neither collides across
+// worktrees or across projects.
+func ProjectName(wt Worktree) string {
+	project := wt.Project
+	if project == "" {
+		project = "croft"
+	}
+	return project + "-" + wt.Slug
 }
 
 var envUnsafe = regexp.MustCompile(`[^A-Z0-9]+`)
@@ -59,7 +66,7 @@ func Env(wt Worktree) map[string]string {
 	env := map[string]string{
 		"CROFT_SLUG":           wt.Slug,
 		"CROFT_WORKTREE":       wt.Path,
-		"COMPOSE_PROJECT_NAME": ProjectName(wt.Slug),
+		"COMPOSE_PROJECT_NAME": ProjectName(wt),
 	}
 	for svc, port := range wt.Ports {
 		key := envUnsafe.ReplaceAllString(strings.ToUpper(svc), "_")

@@ -73,13 +73,16 @@ func TestNewLsStatusRm(t *testing.T) {
 		t.Errorf("ports = %v, want api=3000 db=3001", wt.Ports)
 	}
 
-	// new is idempotent.
+	// new is idempotent — re-running reconciles the existing worktree.
 	out.Reset()
 	if err := doNew(ctx, "my-feature", "", &out); err != nil {
 		t.Fatalf("doNew (repeat): %v", err)
 	}
-	if !strings.Contains(out.String(), "already exists") {
-		t.Errorf("repeat doNew should report existing, got %q", out.String())
+	if !strings.Contains(out.String(), "Reconciling") {
+		t.Errorf("repeat doNew should reconcile, got %q", out.String())
+	}
+	if again, _, _ := ctx.Store.Get("my-feature"); again.Ports["api"] != wt.Ports["api"] {
+		t.Errorf("reconcile must not change ports: %v vs %v", again.Ports, wt.Ports)
 	}
 
 	// A second worktree gets a distinct port set.

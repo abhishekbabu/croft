@@ -6,18 +6,19 @@ import (
 	"os"
 	"time"
 
+	"github.com/abhishekbabu/croft/internal/provider"
 	"github.com/abhishekbabu/croft/internal/state"
 	"github.com/abhishekbabu/croft/internal/worktree"
 	"github.com/spf13/cobra"
 )
 
-// NewNewCmd builds the `croft new` command, which creates an isolated worktree
-// for a branch.
+// NewNewCmd builds the `croft new` command, which creates a fully isolated
+// environment for a branch: worktree, port set, container stack, and session.
 func NewNewCmd() *cobra.Command {
 	var from string
 	cmd := &cobra.Command{
 		Use:   "new <branch>",
-		Short: "Create an isolated worktree for a branch",
+		Short: "Create an isolated environment for a branch",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
@@ -35,7 +36,9 @@ func NewNewCmd() *cobra.Command {
 	return cmd
 }
 
-// doNew creates (or idempotently reports) the worktree for branch.
+// doNew creates the worktree for branch and reconciles its environment. It is
+// idempotent: re-running it on an existing worktree re-converges the container
+// stack and session rather than failing.
 func doNew(ctx *appContext, branch, from string, out io.Writer) error {
 	slug := worktree.Slugify(branch)
 	if slug == "" {
@@ -46,49 +49,80 @@ func doNew(ctx *appContext, branch, from string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if existing, ok := reg.Worktrees[slug]; ok && dirExists(existing.Path) {
-		fmt.Fprintf(out, "Worktree %q already exists at %s\n", slug, existing.Path)
-		return nil
-	}
+	rec, registered := reg.Worktrees[slug]
 
-	id := worktree.Resolve(slug, ctx.WorktreeRoot, ctx.Config.Worktree.Naming)
-	if err := os.MkdirAll(ctx.WorktreeRoot, 0o755); err != nil {
-		return fmt.Errorf("create worktree root: %w", err)
-	}
-
-	ports := map[string]int{}
-	if ctx.Config.Ports.Range != "" && len(ctx.Config.Ports.Services) > 0 {
-		low, high, err := ctx.Config.Ports.Bounds()
+	// Create the worktree itself unless it already exists on disk.
+	if !registered || !dirExists(rec.Path) {
+		rec, err = createWorktree(ctx, reg, slug, branch, from, rec)
 		if err != nil {
 			return err
 		}
+		fmt.Fprintf(out, "Created worktree %q (branch %s)\n", slug, branch)
+	} else {
+		fmt.Fprintf(out, "Reconciling worktree %q\n", slug)
+	}
+	fmt.Fprintf(out, "  path:  %s\n", rec.Path)
+	if len(rec.Ports) > 0 {
+		fmt.Fprintf(out, "  ports: %s\n", formatPorts(rec.Ports))
+	}
+
+	// Reconcile the isolated environment. These steps are all idempotent.
+	pw := ctx.providerWorktree(rec)
+	env := provider.Env(pw)
+	if err := ctx.Providers.Multiplexer.CreateSession(provider.ProjectName(pw), rec.Path, env); err != nil {
+		return fmt.Errorf("create session: %w", err)
+	}
+	if err := ctx.Providers.Infra.Up(pw); err != nil {
+		return fmt.Errorf("bring infra up: %w", err)
+	}
+	if err := runHooks("post_create", ctx.Config.Hooks.PostCreate, rec.Path, env, out); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "Worktree %q is ready.\n", slug)
+	return nil
+}
+
+// createWorktree adds the git worktree, allocates ports, and records the
+// registry entry transactionally (a failed state write rolls the worktree
+// back).
+func createWorktree(ctx *appContext, reg state.Registry, slug, branch, from string, prev state.Worktree) (state.Worktree, error) {
+	id := worktree.Resolve(slug, ctx.WorktreeRoot, ctx.Config.Worktree.Naming)
+	if err := os.MkdirAll(ctx.WorktreeRoot, 0o755); err != nil {
+		return state.Worktree{}, fmt.Errorf("create worktree root: %w", err)
+	}
+
+	// Reuse a prior allocation when reconciling a stale entry; otherwise
+	// allocate a fresh port set.
+	ports := prev.Ports
+	if len(ports) == 0 && ctx.Config.Ports.Range != "" && len(ctx.Config.Ports.Services) > 0 {
+		low, high, err := ctx.Config.Ports.Bounds()
+		if err != nil {
+			return state.Worktree{}, err
+		}
 		ports, err = worktree.AllocatePorts(low, high, ctx.Config.Ports.Services, takenPorts(reg))
 		if err != nil {
-			return err
+			return state.Worktree{}, err
 		}
 	}
 
 	if err := ctx.Manager.Add(id.Path, branch, from); err != nil {
-		return err
+		return state.Worktree{}, err
 	}
+
 	rec := state.Worktree{
 		Slug:    slug,
 		Branch:  branch,
 		Path:    id.Path,
 		Ports:   ports,
-		Created: time.Now().UTC(),
+		Status:  prev.Status,
+		Created: prev.Created,
+	}
+	if rec.Created.IsZero() {
+		rec.Created = time.Now().UTC()
 	}
 	if err := ctx.Store.Put(rec); err != nil {
-		// Roll the worktree back so a failed `new` leaves nothing behind.
 		_ = ctx.Manager.Remove(id.Path, true)
-		return fmt.Errorf("record worktree (rolled back): %w", err)
+		return state.Worktree{}, fmt.Errorf("record worktree (rolled back): %w", err)
 	}
-
-	fmt.Fprintf(out, "Created worktree %q\n", slug)
-	fmt.Fprintf(out, "  branch: %s\n", branch)
-	fmt.Fprintf(out, "  path:   %s\n", id.Path)
-	if len(ports) > 0 {
-		fmt.Fprintf(out, "  ports:  %s\n", formatPorts(ports))
-	}
-	return nil
+	return rec, nil
 }

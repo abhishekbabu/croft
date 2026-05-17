@@ -8,12 +8,14 @@ import (
 	"strings"
 
 	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/abhishekbabu/croft/internal/provider"
 	"github.com/abhishekbabu/croft/internal/state"
 	"github.com/abhishekbabu/croft/internal/worktree"
 )
 
 // appContext bundles everything a command needs: the resolved repository,
-// parsed configuration, the state store, and a git-worktree manager.
+// parsed configuration, the state store, a git-worktree manager, and the
+// configured provider set.
 type appContext struct {
 	RepoRoot     string
 	WorktreeRoot string // absolute path where checkouts land
@@ -21,6 +23,7 @@ type appContext struct {
 	Machine      config.MachineConfig
 	Store        *state.Store
 	Manager      *worktree.Manager
+	Providers    provider.Set
 }
 
 // loadContext resolves the croft context for the repository containing
@@ -46,6 +49,10 @@ func loadContext(startDir string) (*appContext, error) {
 	if err != nil {
 		return nil, err
 	}
+	providers, err := provider.New(cfg.Providers, machine)
+	if err != nil {
+		return nil, err
+	}
 	return &appContext{
 		RepoRoot:     root,
 		WorktreeRoot: filepath.Clean(filepath.Join(root, cfg.Worktree.Root)),
@@ -53,7 +60,19 @@ func loadContext(startDir string) (*appContext, error) {
 		Machine:      machine,
 		Store:        store,
 		Manager:      worktree.NewManager(root),
+		Providers:    providers,
 	}, nil
+}
+
+// providerWorktree adapts a registry record into the value providers operate
+// on.
+func (c *appContext) providerWorktree(wt state.Worktree) provider.Worktree {
+	return provider.Worktree{
+		Project: c.Config.Project.Name,
+		Slug:    wt.Slug,
+		Path:    wt.Path,
+		Ports:   wt.Ports,
+	}
 }
 
 // takenPorts returns the union of every port already allocated in the registry.
