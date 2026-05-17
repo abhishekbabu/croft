@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/abhishekbabu/croft/internal/command"
 	"github.com/spf13/cobra"
 )
 
@@ -34,5 +35,7 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	root.SetVersionTemplate("croft {{.Version}}\n")
+
+	root.AddCommand(command.NewInitCmd())
 	return root
 }

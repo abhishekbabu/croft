@@ -9,6 +9,13 @@ linters:
     - unused
     - misspell
     - revive
+  settings:
+    errcheck:
+      # Writes to CLI output streams are intentionally fire-and-forget.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
 
 formatters:
   enable:
