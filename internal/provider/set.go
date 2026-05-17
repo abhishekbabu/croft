@@ -50,7 +50,7 @@ func New(p config.ProvidersSection, m config.MachineConfig) (Set, error) {
 	switch p.Router {
 	case "", "none":
 	case "portless":
-		// Implemented in a later milestone; no-op until then.
+		s.Router = NewPortlessRouter(m.Bin("portless"))
 	default:
 		return Set{}, fmt.Errorf("unknown router provider %q", p.Router)
 	}
@@ -58,7 +58,7 @@ func New(p config.ProvidersSection, m config.MachineConfig) (Set, error) {
 	switch p.Stacker {
 	case "", "none":
 	case "graphite":
-		// Implemented in a later milestone; no-op until then.
+		s.Stacker = NewGraphiteStacker(m.Bin("gt"))
 	default:
 		return Set{}, fmt.Errorf("unknown stacker provider %q", p.Stacker)
 	}

@@ -3,7 +3,9 @@ package worktree
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -27,9 +29,14 @@ func NewManager(repoRoot string) *Manager {
 	return &Manager{repoRoot: repoRoot}
 }
 
-// git runs a git subcommand inside the repository and returns stdout.
+// git runs a git subcommand at the repository root and returns stdout.
 func (m *Manager) git(args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", m.repoRoot}, args...)...)
+	return gitAt(m.repoRoot, args...)
+}
+
+// gitAt runs a git subcommand in dir and returns stdout.
+func gitAt(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
 	var out, errb strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &errb
@@ -41,6 +48,60 @@ func (m *Manager) git(args ...string) (string, error) {
 		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
 	}
 	return out.String(), nil
+}
+
+// GitDir returns the absolute .git directory for the worktree at path.
+func (m *Manager) GitDir(path string) (string, error) {
+	out, err := gitAt(path, "rev-parse", "--git-dir")
+	if err != nil {
+		return "", err
+	}
+	gd := strings.TrimSpace(out)
+	if !filepath.IsAbs(gd) {
+		gd = filepath.Join(path, gd)
+	}
+	return gd, nil
+}
+
+// InRebase reports whether the worktree at path has a rebase in progress —
+// either a `git rebase` or a Graphite restack that hit conflicts.
+func (m *Manager) InRebase(path string) bool {
+	gd, err := m.GitDir(path)
+	if err != nil {
+		return false
+	}
+	for _, d := range []string{"rebase-merge", "rebase-apply"} {
+		if info, err := os.Stat(filepath.Join(gd, d)); err == nil && info.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+// IsDirty reports whether the worktree at path has uncommitted changes in the
+// working tree or the index.
+func (m *Manager) IsDirty(path string) bool {
+	worktreeDirty := exec.Command("git", "-C", path, "diff", "--quiet").Run() != nil
+	indexDirty := exec.Command("git", "-C", path, "diff", "--cached", "--quiet").Run() != nil
+	return worktreeDirty || indexDirty
+}
+
+// Stash saves uncommitted changes (including untracked files) and reports
+// whether anything was stashed.
+func (m *Manager) Stash(path, msg string) (bool, error) {
+	if !m.IsDirty(path) {
+		return false, nil
+	}
+	if _, err := gitAt(path, "stash", "push", "-m", msg, "--include-untracked"); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// StashPop restores the most recently stashed changes.
+func (m *Manager) StashPop(path string) error {
+	_, err := gitAt(path, "stash", "pop")
+	return err
 }
 
 // BranchExists reports whether branch is a known local branch.

@@ -92,3 +92,54 @@ func TestManagerAddListRemove(t *testing.T) {
 		t.Errorf("Prune: %v", err)
 	}
 }
+
+func TestDirtyAndStash(t *testing.T) {
+	repo := initRepo(t)
+	mgr := NewManager(repo)
+
+	if mgr.IsDirty(repo) {
+		t.Fatal("fresh repo should be clean")
+	}
+	if stashed, err := mgr.Stash(repo, "test"); err != nil || stashed {
+		t.Fatalf("Stash of clean tree: stashed=%v err=%v", stashed, err)
+	}
+
+	if err := os.WriteFile(filepath.Join(repo, "f"), []byte("changed"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !mgr.IsDirty(repo) {
+		t.Fatal("repo should be dirty after edit")
+	}
+	stashed, err := mgr.Stash(repo, "test")
+	if err != nil || !stashed {
+		t.Fatalf("Stash of dirty tree: stashed=%v err=%v", stashed, err)
+	}
+	if mgr.IsDirty(repo) {
+		t.Error("repo should be clean after stash")
+	}
+	if err := mgr.StashPop(repo); err != nil {
+		t.Fatalf("StashPop: %v", err)
+	}
+	if !mgr.IsDirty(repo) {
+		t.Error("changes should be restored after StashPop")
+	}
+}
+
+func TestInRebase(t *testing.T) {
+	repo := initRepo(t)
+	mgr := NewManager(repo)
+	if mgr.InRebase(repo) {
+		t.Error("fresh repo should not be mid-rebase")
+	}
+	// Simulate a stalled rebase by creating the state directory git uses.
+	gd, err := mgr.GitDir(repo)
+	if err != nil {
+		t.Fatalf("GitDir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(gd, "rebase-merge"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if !mgr.InRebase(repo) {
+		t.Error("InRebase should detect the rebase-merge directory")
+	}
+}
