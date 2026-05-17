@@ -15,7 +15,7 @@ import (
 // NewNewCmd builds the `croft new` command, which creates a fully isolated
 // environment for a branch: worktree, port set, container stack, and session.
 func NewNewCmd() *cobra.Command {
-	var from string
+	var from, agentName string
 	cmd := &cobra.Command{
 		Use:   "new <branch>",
 		Short: "Create an isolated environment for a branch",
@@ -29,17 +29,19 @@ func NewNewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return doNew(ctx, args[0], from, cmd.OutOrStdout())
+			return doNew(ctx, args[0], from, agentName, cmd.OutOrStdout())
 		},
 	}
 	cmd.Flags().StringVar(&from, "from", "", "start point for a new branch (default: current HEAD)")
+	cmd.Flags().StringVar(&agentName, "agent", "", "launch a configured agent into the worktree")
 	return cmd
 }
 
 // doNew creates the worktree for branch and reconciles its environment. It is
 // idempotent: re-running it on an existing worktree re-converges the container
-// stack and session rather than failing.
-func doNew(ctx *appContext, branch, from string, out io.Writer) error {
+// stack and session rather than failing. When agentName is set, the agent is
+// launched into the worktree's session.
+func doNew(ctx *appContext, branch, from, agentName string, out io.Writer) error {
 	slug := worktree.Slugify(branch)
 	if slug == "" {
 		return fmt.Errorf("branch %q produces an empty slug", branch)
@@ -78,6 +80,13 @@ func doNew(ctx *appContext, branch, from string, out io.Writer) error {
 	if err := runHooks("post_create", ctx.Config.Hooks.PostCreate, rec.Path, env, out); err != nil {
 		return err
 	}
+
+	if agentName != "" {
+		if err := launchAgent(ctx, rec, agentName, env, out); err != nil {
+			return err
+		}
+	}
+
 	fmt.Fprintf(out, "Worktree %q is ready.\n", slug)
 	return nil
 }

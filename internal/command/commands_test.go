@@ -42,6 +42,10 @@ root = "../wt"
 [ports]
 range = "3000-3999"
 services = ["api", "db"]
+[[agents]]
+name = "noop"
+runner = "exec"
+command = ["true"]
 `
 	if err := os.WriteFile(filepath.Join(repo, "croft.toml"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
@@ -59,7 +63,7 @@ func TestNewLsStatusRm(t *testing.T) {
 	}
 
 	var out strings.Builder
-	if err := doNew(ctx, "my-feature", "", &out); err != nil {
+	if err := doNew(ctx, "my-feature", "", "", &out); err != nil {
 		t.Fatalf("doNew: %v", err)
 	}
 	wt, found, err := ctx.Store.Get("my-feature")
@@ -75,7 +79,7 @@ func TestNewLsStatusRm(t *testing.T) {
 
 	// new is idempotent — re-running reconciles the existing worktree.
 	out.Reset()
-	if err := doNew(ctx, "my-feature", "", &out); err != nil {
+	if err := doNew(ctx, "my-feature", "", "", &out); err != nil {
 		t.Fatalf("doNew (repeat): %v", err)
 	}
 	if !strings.Contains(out.String(), "Reconciling") {
@@ -86,7 +90,7 @@ func TestNewLsStatusRm(t *testing.T) {
 	}
 
 	// A second worktree gets a distinct port set.
-	if err := doNew(ctx, "other", "", &strings.Builder{}); err != nil {
+	if err := doNew(ctx, "other", "", "", &strings.Builder{}); err != nil {
 		t.Fatalf("doNew other: %v", err)
 	}
 	other, _, _ := ctx.Store.Get("other")
@@ -137,6 +141,38 @@ func TestStatusUnknownWorktree(t *testing.T) {
 	}
 	if err := doStatus(ctx, "nope", &strings.Builder{}); err == nil {
 		t.Error("status of unknown worktree should error")
+	}
+}
+
+func TestNewWithAgent(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	var out strings.Builder
+	// The "noop" exec agent runs `true`; with the none multiplexer it runs in
+	// the foreground and exits cleanly.
+	if err := doNew(ctx, "agented", "", "noop", &out); err != nil {
+		t.Fatalf("doNew --agent: %v", err)
+	}
+	if !strings.Contains(out.String(), "Launched agent") {
+		t.Errorf("expected agent launch in output:\n%s", out.String())
+	}
+	rec, _, _ := ctx.Store.Get("agented")
+	if rec.Status != "working" {
+		t.Errorf("status = %q, want working", rec.Status)
+	}
+}
+
+func TestNewWithUnknownAgent(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	if err := doNew(ctx, "x", "", "ghost", &strings.Builder{}); err == nil {
+		t.Error("doNew with an unknown agent should error")
 	}
 }
 

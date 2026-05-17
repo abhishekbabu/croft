@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -11,6 +12,9 @@ type Multiplexer interface {
 	// CreateSession starts a detached session named name, rooted at dir, with
 	// env exported. Creating an existing session is a no-op.
 	CreateSession(name, dir string, env map[string]string) error
+	// RunWindow runs argv in a window of the session — the entry point for
+	// launching an agent into a worktree.
+	RunWindow(name, window, dir string, env map[string]string, argv []string) error
 	// Attach connects the current terminal to the session.
 	Attach(name string) error
 	// Kill terminates the session. Killing an absent session is a no-op.
@@ -24,6 +28,20 @@ type NoneMultiplexer struct{}
 
 // CreateSession does nothing.
 func (NoneMultiplexer) CreateSession(string, string, map[string]string) error { return nil }
+
+// RunWindow runs argv in the foreground, attached to the current terminal,
+// blocking until it exits — with no multiplexer there is nowhere else to put
+// an agent.
+func (NoneMultiplexer) RunWindow(_, _, dir string, env map[string]string, argv []string) error {
+	if len(argv) == 0 {
+		return fmt.Errorf("RunWindow: empty argv")
+	}
+	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), envSlice(env)...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
+}
 
 // Attach does nothing.
 func (NoneMultiplexer) Attach(string) error { return nil }
@@ -62,6 +80,23 @@ func (t *TmuxMultiplexer) CreateSession(name, dir string, env map[string]string)
 	for k, v := range env {
 		args = append(args, "-e", k+"="+v)
 	}
+	_, err := run(t.bin, "", nil, args...)
+	return err
+}
+
+// RunWindow opens a new tmux window in the session and runs argv there.
+func (t *TmuxMultiplexer) RunWindow(name, window, dir string, env map[string]string, argv []string) error {
+	if len(argv) == 0 {
+		return fmt.Errorf("RunWindow: empty argv")
+	}
+	args := []string{"new-window", "-t", name, "-c", dir}
+	if window != "" {
+		args = append(args, "-n", window)
+	}
+	for k, v := range env {
+		args = append(args, "-e", k+"="+v)
+	}
+	args = append(args, argv...)
 	_, err := run(t.bin, "", nil, args...)
 	return err
 }

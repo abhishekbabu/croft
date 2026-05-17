@@ -54,10 +54,13 @@ type ProvidersSection struct {
 	Coordination string `toml:"coordination"`
 }
 
-// AgentConfig names an agent and the runner that backs it.
+// AgentConfig names an agent and the runner that backs it. Command is the
+// argv template used only by the "exec" runner ({dir} and {prompt} are
+// substituted at launch).
 type AgentConfig struct {
-	Name   string `toml:"name"`
-	Runner string `toml:"runner"`
+	Name    string   `toml:"name"`
+	Runner  string   `toml:"runner"`
+	Command []string `toml:"command"`
 }
 
 // HooksSection holds shell commands run around worktree lifecycle events.
@@ -155,6 +158,9 @@ func (p *ProjectConfig) Validate() error {
 		seen[a.Name] = true
 		if err := validateEnum(fmt.Sprintf("agents[%d].runner", i), a.Runner, AgentRunners); err != nil {
 			return err
+		}
+		if a.Runner == "exec" && len(a.Command) == 0 {
+			return fmt.Errorf("agents[%d].command: required when runner is \"exec\"", i)
 		}
 	}
 	return nil
