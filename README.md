@@ -30,16 +30,25 @@ run.
 
 ## Installation
 
+Install script (Linux and macOS):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/abhishekbabu/croft/main/install.sh | sh
+```
+
+With Go:
+
 ```sh
 go install github.com/abhishekbabu/croft/cmd/croft@latest
 ```
 
-Or build from source:
+Or download a binary from the [releases page](https://github.com/abhishekbabu/croft/releases),
+or build from source:
 
 ```sh
 git clone https://github.com/abhishekbabu/croft
 cd croft
-go build ./...
+go build ./cmd/croft
 ```
 
 ## Quick start
