@@ -76,3 +76,9 @@ croft stores its registry under the XDG data directory —
 
 State is plain JSON, one concern per file: no daemon, no database. Safe to
 inspect, and `croft doctor` reconciles it against reality.
+
+## See also
+
+- [Providers](providers.md) — what each `[providers]` backend does.
+- [Agents](agents.md) — the `[[agents]]` block and the runners behind it.
+- [Command reference](commands.md) — every command and flag.

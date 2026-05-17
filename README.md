@@ -66,11 +66,16 @@ croft ls
 
 ## Documentation
 
-- [Configuration reference](docs/configuration.md) — `croft.toml`, the
-  per-machine config, and the runtime state directory.
-- [Migrating from an existing setup](docs/cutover.md) — the incremental,
-  parallel-run adoption model.
-- [`examples/croft.toml`](examples/croft.toml) — a fully-wired example config.
+Full documentation is in [`docs/`](docs/README.md):
+
+- [Getting started](docs/getting-started.md) — install and first worktree.
+- [Command reference](docs/commands.md) — every command and flag.
+- [Configuration](docs/configuration.md) — `croft.toml` and the machine config.
+- [Providers](docs/providers.md) — the five swappable backends.
+- [Agents](docs/agents.md) — agent runners and multi-agent coordination.
+- [Migrating from an existing setup](docs/cutover.md) — incremental adoption.
+
+See also [`examples/croft.toml`](examples/croft.toml) for a fully-wired config.
 
 ## Contributing
 
