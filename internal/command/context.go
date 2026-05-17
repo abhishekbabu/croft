@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/abhishekbabu/croft/internal/config"
@@ -73,6 +74,26 @@ func (c *appContext) providerWorktree(wt state.Worktree) provider.Worktree {
 		Path:    wt.Path,
 		Ports:   wt.Ports,
 	}
+}
+
+// devCommand returns the worktree's dev server command with the {port}
+// placeholder substituted, or an empty string when none is configured.
+func (c *appContext) devCommand(wt state.Worktree) string {
+	cmd := c.Config.Worktree.DevCommand
+	if cmd == "" {
+		return ""
+	}
+	return strings.ReplaceAll(cmd, "{port}", c.primaryPort(wt))
+}
+
+// primaryPort returns the port of the first configured service, as a string.
+func (c *appContext) primaryPort(wt state.Worktree) string {
+	for _, svc := range c.Config.Ports.Services {
+		if p, ok := wt.Ports[svc]; ok {
+			return strconv.Itoa(p)
+		}
+	}
+	return ""
 }
 
 // takenPorts returns the union of every port already allocated in the registry.

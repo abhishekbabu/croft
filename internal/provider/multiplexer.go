@@ -5,16 +5,23 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 // Multiplexer manages a terminal session per worktree.
 type Multiplexer interface {
+	// Managed reports whether the multiplexer can host long-running background
+	// processes in a real session. The none multiplexer cannot.
+	Managed() bool
 	// CreateSession starts a detached session named name, rooted at dir, with
 	// env exported. Creating an existing session is a no-op.
 	CreateSession(name, dir string, env map[string]string) error
 	// RunWindow runs argv in a window of the session — the entry point for
-	// launching an agent into a worktree.
+	// launching an agent or dev server into a worktree.
 	RunWindow(name, window, dir string, env map[string]string, argv []string) error
+	// HasWindow reports whether a window of the given name exists in the
+	// session — used to keep RunWindow callers idempotent.
+	HasWindow(name, window string) bool
 	// Attach connects the current terminal to the session.
 	Attach(name string) error
 	// Kill terminates the session. Killing an absent session is a no-op.
@@ -26,8 +33,14 @@ type Multiplexer interface {
 // NoneMultiplexer is the no-op multiplexer: worktrees have no managed session.
 type NoneMultiplexer struct{}
 
+// Managed reports false: the none multiplexer hosts nothing.
+func (NoneMultiplexer) Managed() bool { return false }
+
 // CreateSession does nothing.
 func (NoneMultiplexer) CreateSession(string, string, map[string]string) error { return nil }
+
+// HasWindow always reports false.
+func (NoneMultiplexer) HasWindow(string, string) bool { return false }
 
 // RunWindow runs argv in the foreground, attached to the current terminal,
 // blocking until it exits — with no multiplexer there is nowhere else to put
@@ -64,6 +77,23 @@ func NewTmuxMultiplexer(bin string) *TmuxMultiplexer {
 		bin = "tmux"
 	}
 	return &TmuxMultiplexer{bin: bin}
+}
+
+// Managed reports true: tmux hosts real sessions.
+func (t *TmuxMultiplexer) Managed() bool { return true }
+
+// HasWindow reports whether a window of the given name exists in the session.
+func (t *TmuxMultiplexer) HasWindow(name, window string) bool {
+	res, err := run(t.bin, "", nil, "list-windows", "-t", name, "-F", "#{window_name}")
+	if err != nil {
+		return false
+	}
+	for _, w := range strings.Split(res.stdout, "\n") {
+		if strings.TrimSpace(w) == window {
+			return true
+		}
+	}
+	return false
 }
 
 // hasSession reports whether a tmux session with the given name exists.

@@ -93,6 +93,9 @@ func doNew(ctx *appContext, branch, from, agentName string, out io.Writer) error
 	if err := runHooks("post_create", ctx.Config.Hooks.PostCreate, rec.Path, env, out); err != nil {
 		return err
 	}
+	if err := startDevServer(ctx, rec, env, out); err != nil {
+		return err
+	}
 
 	if agentName != "" {
 		if err := launchAgent(ctx, rec, agentName, env, out); err != nil {
@@ -101,6 +104,30 @@ func doNew(ctx *appContext, branch, from, agentName string, out io.Writer) error
 	}
 
 	fmt.Fprintf(out, "Worktree %q is ready.\n", slug)
+	return nil
+}
+
+// startDevServer runs the configured dev server in the worktree's session,
+// idempotently. With no multiplexer to host it, it prints the command instead.
+func startDevServer(ctx *appContext, rec state.Worktree, env map[string]string, out io.Writer) error {
+	cmd := ctx.devCommand(rec)
+	if cmd == "" {
+		return nil
+	}
+	mux := ctx.Providers.Multiplexer
+	if !mux.Managed() {
+		fmt.Fprintf(out, "  dev server: no multiplexer configured — start it yourself:\n    %s\n", cmd)
+		return nil
+	}
+	session := provider.ProjectName(ctx.providerWorktree(rec))
+	if mux.HasWindow(session, "dev") {
+		fmt.Fprintln(out, "  dev server: already running")
+		return nil
+	}
+	if err := mux.RunWindow(session, "dev", rec.Path, env, []string{"sh", "-c", cmd}); err != nil {
+		return fmt.Errorf("start dev server: %w", err)
+	}
+	fmt.Fprintf(out, "  dev server: started (%s)\n", cmd)
 	return nil
 }
 

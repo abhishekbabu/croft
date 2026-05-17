@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/abhishekbabu/croft/internal/state"
 )
 
 // setupRepo builds a git repo (one commit) with a croft.toml and isolated XDG
@@ -39,6 +42,7 @@ func setupRepo(t *testing.T) string {
 name = "demo"
 [worktree]
 root = "../wt"
+dev_command = "echo serving on {port}"
 [ports]
 range = "3000-3999"
 services = ["api", "db"]
@@ -173,6 +177,43 @@ func TestNewWithUnknownAgent(t *testing.T) {
 	}
 	if err := doNew(ctx, "x", "", "ghost", &strings.Builder{}); err == nil {
 		t.Error("doNew with an unknown agent should error")
+	}
+}
+
+func TestNewStartsDevServer(t *testing.T) {
+	repo := setupRepo(t)
+	ctx, err := loadContext(repo)
+	if err != nil {
+		t.Fatalf("loadContext: %v", err)
+	}
+	var out strings.Builder
+	if err := doNew(ctx, "feat", "", "", &out); err != nil {
+		t.Fatalf("doNew: %v", err)
+	}
+	// With the none multiplexer croft can't host the dev server, so it prints
+	// the command — with {port} substituted to the primary service's port.
+	got := out.String()
+	if !strings.Contains(got, "dev server") {
+		t.Errorf("expected dev server notice in output:\n%s", got)
+	}
+	if !strings.Contains(got, "echo serving on 3000") {
+		t.Errorf("{port} should be substituted to the api port (3000):\n%s", got)
+	}
+}
+
+func TestDevCommandSubstitution(t *testing.T) {
+	ctx := &appContext{Config: config.ProjectConfig{
+		Worktree: config.WorktreeSection{DevCommand: "run --port {port}"},
+		Ports:    config.PortsSection{Services: []string{"api", "db"}},
+	}}
+	rec := state.Worktree{Ports: map[string]int{"api": 5000, "db": 5001}}
+	if got := ctx.devCommand(rec); got != "run --port 5000" {
+		t.Errorf("devCommand = %q, want 'run --port 5000'", got)
+	}
+
+	noDev := &appContext{}
+	if got := noDev.devCommand(rec); got != "" {
+		t.Errorf("devCommand with no dev_command = %q, want empty", got)
 	}
 }
 
