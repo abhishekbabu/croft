@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -58,5 +60,15 @@ func TestScaffoldEmptyCollectionsAreValidTOML(t *testing.T) {
 	}
 	if _, err := DecodeProject([]byte(rendered)); err != nil {
 		t.Fatalf("scaffold of minimal config must decode: %v", err)
+	}
+}
+
+func TestExampleConfigIsValid(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "examples", "croft.toml"))
+	if err != nil {
+		t.Fatalf("read example config: %v", err)
+	}
+	if _, err := DecodeProject(data); err != nil {
+		t.Fatalf("examples/croft.toml is invalid: %v", err)
 	}
 }

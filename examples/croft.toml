@@ -1,0 +1,42 @@
+# Example croft.toml — a fully-wired setup using every provider.
+#
+# This mirrors a monorepo that already uses cmux, portless, and Graphite.
+# Copy it to your repository root, adjust, and commit. For a minimal setup,
+# run `croft init` instead and leave the providers at their defaults.
+
+[project]
+name = "myapp"
+
+[worktree]
+# Checkouts land in a sibling directory, one per branch.
+root        = "../worktrees"
+naming      = "myapp.{slug}"
+# {port} is substituted with the worktree's allocated port.
+dev_command = "just dev --port {port}"
+# Untracked files seeded into each new worktree.
+copy_files  = [".env.local"]
+
+[ports]
+# Each worktree draws a unique port for every service from this range.
+range    = "3000-3999"
+services = ["api", "frontend", "postgres", "redis"]
+
+[providers]
+multiplexer  = "cmux"            # none | tmux | cmux
+infra        = "docker-compose"  # none | docker-compose
+router       = "portless"        # none | portless
+stacker      = "graphite"        # none | graphite
+coordination = "basic"           # basic | claude-agent-teams
+
+[[agents]]
+name   = "claude"
+runner = "claude"
+
+[[agents]]
+name   = "codex"
+runner = "codex"
+
+[hooks]
+# Shell commands run after a worktree is created / before it is removed.
+post_create = ["docker compose up -d --wait"]
+pre_remove  = ["docker compose down -v"]

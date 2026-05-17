@@ -55,6 +55,14 @@ croft new my-feature
 croft ls
 ```
 
+## Documentation
+
+- [Configuration reference](docs/configuration.md) — `croft.toml`, the
+  per-machine config, and the runtime state directory.
+- [Migrating from an existing setup](docs/cutover.md) — the incremental,
+  parallel-run adoption model.
+- [`examples/croft.toml`](examples/croft.toml) — a fully-wired example config.
+
 ## Contributing
 
 Issues and pull requests are welcome. Run `go build ./...` and `go test ./...`
