@@ -1,0 +1,78 @@
+// Package provider defines croft's five swappable backend interfaces —
+// multiplexer, infra, router, stacker, coordination — and their built-in
+// implementations. Every interface has a no-op default so a minimal setup
+// needs no external tools (PLAN.md §6.3).
+package provider
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
+
+// Worktree is the subset of a worktree's state that providers operate on.
+type Worktree struct {
+	Slug  string
+	Path  string
+	Ports map[string]int
+}
+
+// InfraState describes whether a worktree's container stack is running.
+type InfraState struct {
+	Up     bool
+	Detail string
+}
+
+// StackState describes the result of a stack sync (used by Stacker).
+type StackState struct {
+	Branches []string
+	Rebased  bool
+	Detail   string
+}
+
+// PeerSpec describes a coordinated agent to spawn (used by Coordination).
+type PeerSpec struct {
+	Name  string
+	Agent string
+	Role  string
+	Dir   string
+}
+
+// Peer is a spawned, coordinated agent.
+type Peer struct {
+	Name   string
+	Agent  string
+	Status string
+}
+
+// ProjectName returns the per-worktree container/project namespace.
+func ProjectName(slug string) string {
+	return "croft-" + slug
+}
+
+var envUnsafe = regexp.MustCompile(`[^A-Z0-9]+`)
+
+// Env returns the environment variables croft injects into a worktree's
+// session and container stack: identity, paths, the compose project name, and
+// one <SERVICE>_PORT per allocated port.
+func Env(wt Worktree) map[string]string {
+	env := map[string]string{
+		"CROFT_SLUG":           wt.Slug,
+		"CROFT_WORKTREE":       wt.Path,
+		"COMPOSE_PROJECT_NAME": ProjectName(wt.Slug),
+	}
+	for svc, port := range wt.Ports {
+		key := envUnsafe.ReplaceAllString(strings.ToUpper(svc), "_")
+		env[key+"_PORT"] = fmt.Sprintf("%d", port)
+	}
+	return env
+}
+
+// envSlice renders an environment map as KEY=VALUE pairs.
+func envSlice(env map[string]string) []string {
+	out := make([]string, 0, len(env))
+	for k, v := range env {
+		out = append(out, k+"="+v)
+	}
+	return out
+}
