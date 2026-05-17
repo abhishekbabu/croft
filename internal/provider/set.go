@@ -31,12 +31,10 @@ func New(p config.ProvidersSection, m config.MachineConfig) (Set, error) {
 
 	switch p.Multiplexer {
 	case "", "none":
-	case "tmux", "cmux":
-		// cmux shares the tmux control protocol; a dedicated adapter is
-		// planned for a later milestone.
-		s.Multiplexer = NewTmuxMultiplexer(m.Bin(p.Multiplexer))
+	case "tmux":
+		s.Multiplexer = NewTmuxMultiplexer(m.Bin("tmux"))
 	default:
-		return Set{}, fmt.Errorf("unknown multiplexer provider %q", p.Multiplexer)
+		return Set{}, fmt.Errorf("unsupported multiplexer provider %q", p.Multiplexer)
 	}
 
 	switch p.Infra {

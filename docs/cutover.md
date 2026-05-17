@@ -8,12 +8,12 @@ croft incrementally — there is no flag day.
 
 croft drives the *same* worktrees your existing tooling already manages. As
 long as `croft.toml` points its providers at the tools you already use
-(`tmux`/`cmux`, `docker-compose`, `portless`, `graphite`), both can operate
-against one repository during the transition.
+(`tmux`, `docker-compose`, `portless`, `graphite`), both can operate against
+one repository during the transition.
 
 1. **Write `croft.toml`.** Run `croft init` at the repo root and set the
    `providers` block to match your current stack. See `examples/croft.toml`
-   for a fully-wired example (cmux + portless + graphite).
+   for a fully-wired example (tmux + portless + graphite).
 
 2. **Adopt verb by verb.** croft's commands map onto the usual worktree
    operations:

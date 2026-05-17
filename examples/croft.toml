@@ -1,6 +1,6 @@
 # Example croft.toml — a fully-wired setup using every provider.
 #
-# This mirrors a monorepo that already uses cmux, portless, and Graphite.
+# This mirrors a monorepo that already uses tmux, portless, and Graphite.
 # Copy it to your repository root, adjust, and commit. For a minimal setup,
 # run `croft init` instead and leave the providers at their defaults.
 
@@ -22,7 +22,7 @@ range    = "3000-3999"
 services = ["api", "frontend", "postgres", "redis"]
 
 [providers]
-multiplexer  = "cmux"            # none | tmux | cmux
+multiplexer  = "tmux"            # none | tmux
 infra        = "docker-compose"  # none | docker-compose
 router       = "portless"        # none | portless
 stacker      = "graphite"        # none | graphite
