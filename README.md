@@ -31,7 +31,13 @@ run.
 
 ## Installation
 
-Install script (Linux and macOS):
+With [Homebrew](https://brew.sh) (macOS and Linux):
+
+```sh
+brew install abhishekbabu/tap/croft
+```
+
+Install script (macOS and Linux):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/abhishekbabu/croft/main/install.sh | sh
