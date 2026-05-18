@@ -120,7 +120,16 @@ Per worktree, `sync`:
 - `--prune` — tear down worktrees whose stack is fully resolved, instead of
   just reporting them.
 
-With the `none` stacker, `sync` is a graceful no-op per worktree.
+With the `none` stacker, the rebase step is a graceful no-op, but `sync` still
+auto-stashes each worktree.
+
+Multi-worktree `sync` processes worktrees **sequentially, by design** (unlike
+`ls` and `doctor`, which fan out concurrently). All worktrees of a repo share
+one `refs/stash` and one stash stack, so concurrent auto-stash/pop would
+interleave entries — one worktree's pop could restore another's changes. With
+the Graphite stacker it is worse: `gt sync` rebases the whole stack and trunk,
+contending on shared ref locks, and Graphite is not built for concurrent
+invocation on one repo. Run separate `croft sync` invocations one at a time.
 
 ---
 
