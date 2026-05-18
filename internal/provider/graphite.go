@@ -1,0 +1,125 @@
+package provider
+
+import (
+	"encoding/json"
+	"regexp"
+	"strings"
+
+	"github.com/abhishekbabu/croft/internal/sh"
+)
+
+// ansiSeq matches ANSI color escape sequences in `gt` output.
+var ansiSeq = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// branchToken matches a plausible branch-name token.
+var branchToken = regexp.MustCompile(`^[A-Za-z0-9_./-]+$`)
+
+// GraphiteStacker drives branch stacks with the Graphite CLI (`gt`).
+type GraphiteStacker struct {
+	bin string
+}
+
+// NewGraphiteStacker returns a Graphite-backed stacker. An empty bin resolves
+// gt from PATH.
+func NewGraphiteStacker(bin string) *GraphiteStacker {
+	if bin == "" {
+		bin = "gt"
+	}
+	return &GraphiteStacker{bin: bin}
+}
+
+// Sync rebases the worktree's stack onto the trunk. It runs non-interactively
+// so it never blocks on a prompt; merged-branch teardown is croft's job, not
+// gt's, so --force is deliberately omitted.
+func (g *GraphiteStacker) Sync(wt Worktree) (StackState, error) {
+	res, err := sh.Capture(g.bin, wt.Path, nil, "sync", "--no-interactive")
+	if err != nil {
+		return StackState{}, err
+	}
+	branches, _ := g.StackBranches(wt)
+	return StackState{Branches: branches, Rebased: true, Detail: strings.TrimSpace(res)}, nil
+}
+
+// StackBranches lists the branches in the worktree's current stack, trunk
+// excluded.
+func (g *GraphiteStacker) StackBranches(wt Worktree) ([]string, error) {
+	res, err := sh.Capture(g.bin, wt.Path, nil, "log", "short", "-s")
+	if err != nil {
+		return nil, err
+	}
+	return parseStackBranches(res), nil
+}
+
+// parseStackBranches extracts branch names from `gt log short -s` output:
+// strip ANSI, then take the first branch-shaped token on each line.
+func parseStackBranches(out string) []string {
+	var branches []string
+	for _, line := range strings.Split(out, "\n") {
+		line = ansiSeq.ReplaceAllString(line, "")
+		for _, tok := range strings.Fields(line) {
+			if branchToken.MatchString(tok) && tok != "main" && tok != "master" {
+				branches = append(branches, tok)
+				break
+			}
+		}
+	}
+	return branches
+}
+
+// AllResolved reports whether every branch in the stack is in a terminal PR
+// state (MERGED, CLOSED, or no PR). An empty/undeterminable stack reports
+// false so the teardown gate never fires on uncertainty.
+func (g *GraphiteStacker) AllResolved(wt Worktree) (bool, error) {
+	branches, err := g.StackBranches(wt)
+	if err != nil {
+		return false, err
+	}
+	if len(branches) == 0 {
+		return false, nil
+	}
+	states := loadPRStates(wt.Path)
+	for _, br := range branches {
+		switch states[br] {
+		case "", "MERGED", "CLOSED":
+			continue
+		default:
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// prRecord is one entry from `gh pr list --json headRefName,state`.
+type prRecord struct {
+	HeadRefName string `json:"headRefName"`
+	State       string `json:"state"`
+}
+
+// parsePRStates decodes `gh pr list` JSON into a branch -> PR-state map.
+func parsePRStates(data []byte) map[string]string {
+	var records []prRecord
+	if json.Unmarshal(data, &records) != nil {
+		return map[string]string{}
+	}
+	states := make(map[string]string, len(records))
+	for _, r := range records {
+		states[r.HeadRefName] = r.State
+	}
+	return states
+}
+
+// loadPRStates runs one `gh pr list` for the whole repo (PLAN.md §2.3 — never
+// N round-trips) and returns a branch -> PR-state map (OPEN, CLOSED, MERGED).
+// gh being unavailable yields an empty map, not an error, so stack resolution
+// degrades gracefully.
+func loadPRStates(dir string) map[string]string {
+	if !sh.Look("gh") {
+		return map[string]string{}
+	}
+	res, err := sh.Capture("gh", dir, nil,
+		"pr", "list", "--state", "all", "--json", "headRefName,state", "--limit", "300")
+	if err != nil {
+		return map[string]string{}
+	}
+	return parsePRStates([]byte(res))
+}
