@@ -16,8 +16,8 @@ func TestLsEmpty(t *testing.T) {
 
 func TestLsListsWorktrees(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "my-feature", "", "", &strings.Builder{}))
-	require.NoError(t, doNew(ctx, "other", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "my-feature", "", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "other", "", "", "", &strings.Builder{}))
 
 	var out strings.Builder
 	require.NoError(t, doLs(ctx, &out))

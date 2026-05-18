@@ -13,10 +13,12 @@ First release — the Phase 1 isolation layer.
 ### Added
 
 - `croft init` — scaffold a `croft.toml` for a repository.
-- `croft new` — create a fully isolated environment for a branch: git
-  worktree (seeded with any `copy_files`), a unique port set, a container
-  stack, a terminal session, a route, and optionally an AI coding agent
-  (`--agent`). Idempotent and transactional.
+- `croft new` — create a fully isolated environment for a worktree, addressed
+  by its stable slug: git worktree (seeded with any `copy_files`), a unique
+  port set, a container stack, a terminal session, a route, and optionally an
+  AI coding agent (`--agent`). `--branch` checks out a branch whose name
+  differs from the slug, so one worktree can host a stack of branches.
+  Idempotent and transactional.
 - `croft ls` / `croft status` — list worktrees and inspect one.
 - `croft sync` — rebase branch stacks against the trunk: refuses mid-rebase,
   auto-stashes, and applies a stack-resolved teardown gate.

@@ -15,7 +15,7 @@ import (
 func NewRmCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
-		Use:   "rm <branch>",
+		Use:   "rm <slug>",
 		Short: "Remove a worktree and tear down its environment",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -30,11 +30,12 @@ func NewRmCmd() *cobra.Command {
 	return cmd
 }
 
-// doRm tears down the worktree named by branch: pre_remove hooks, container
-// stack, session, then the worktree itself. It is idempotent — a worktree that
-// is already partly gone is cleaned up the rest of the way without error.
-func doRm(ctx *appContext, branch string, force bool, out io.Writer) error {
-	slug := worktree.Slugify(branch)
+// doRm tears down the worktree with the given slug: pre_remove hooks,
+// container stack, session, then the worktree itself. It is idempotent — a
+// worktree that is already partly gone is cleaned up the rest of the way
+// without error.
+func doRm(ctx *appContext, slugArg string, force bool, out io.Writer) error {
+	slug := worktree.Slugify(slugArg)
 
 	rec, found, err := ctx.Store.Get(slug)
 	if err != nil {

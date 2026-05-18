@@ -44,8 +44,8 @@ After pointing `croft.toml` at your stack:
 
 - `croft ls` should list the worktrees you already have (run `croft doctor` to
   adopt any it does not yet know about).
-- `croft new <branch>` should produce a worktree indistinguishable from one
+- `croft new <slug>` should produce a worktree indistinguishable from one
   your old tooling makes — same directory, same container project namespace,
   same port scheme.
-- `croft rm <branch>` should tear it down completely; `croft doctor` should
+- `croft rm <slug>` should tear it down completely; `croft doctor` should
   then report "all clear".

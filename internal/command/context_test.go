@@ -31,7 +31,7 @@ func TestDevCommandSubstitution(t *testing.T) {
 
 func TestLiveStatusDerivation(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "feat", "", "", "", &strings.Builder{}))
 	rec, _, _ := ctx.Store.Get("feat")
 
 	require.Empty(t, ctx.liveStatus(rec), "no agent yields the empty status")

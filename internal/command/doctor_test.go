@@ -19,7 +19,7 @@ func TestDoctorClean(t *testing.T) {
 
 func TestDoctorStaleRegistry(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "feat", "", "", "", &strings.Builder{}))
 
 	rec, _, _ := ctx.Store.Get("feat")
 	// Simulate the worktree directory vanishing out from under croft.

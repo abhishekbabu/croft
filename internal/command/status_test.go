@@ -9,7 +9,7 @@ import (
 
 func TestStatusShowsWorktree(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "my-feature", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "my-feature", "", "", "", &strings.Builder{}))
 
 	var out strings.Builder
 	require.NoError(t, doStatus(ctx, "my-feature", &out))

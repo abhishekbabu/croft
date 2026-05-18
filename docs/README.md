@@ -20,11 +20,11 @@ optionally an AI coding agent.
 | Command | Purpose |
 |---------|---------|
 | `croft init` | Scaffold a `croft.toml` for the current repository. |
-| `croft new <branch>` | Create a fully isolated environment for a branch. |
+| `croft new <slug>` | Create a fully isolated environment for a worktree. |
 | `croft ls` | List croft-managed worktrees and their status. |
-| `croft status <branch>` | Show detail for one worktree. |
-| `croft sync [branch]` | Rebase branch stacks against the trunk. |
-| `croft rm <branch>` | Tear a worktree and its environment down. |
+| `croft status <slug>` | Show detail for one worktree. |
+| `croft sync [slug]` | Rebase branch stacks against the trunk. |
+| `croft rm <slug>` | Tear a worktree and its environment down. |
 | `croft doctor` | Detect and reconcile orphans, leaks, and stale state. |
 | `croft spawn <name> --agent <a>` | Spawn a named coordinated agent. |
 | `croft fleet status` / `croft fleet msg` | Cross-worktree peer status and dispatch. |
@@ -36,9 +36,11 @@ for full detail.
 
 - **Worktree** — a git worktree croft manages: its own checkout, port set,
   container stack, terminal session, and route.
-- **Slug** — a worktree's stable identity, derived from its directory name. It
-  never changes when git HEAD moves, so navigating a branch stack never changes
-  a worktree's resources or state keys.
+- **Slug** — a worktree's stable identity, derived from its directory name, and
+  the argument every command takes to address one. It never changes when git
+  HEAD moves, so navigating a branch stack never changes a worktree's resources
+  or state keys. A worktree's slug and the branch it checks out are independent
+  (see `croft new --branch`).
 - **Provider** — a swappable backend for one concern (multiplexer, infra,
   router, stacker, coordination). Every provider has a no-op default, so a repo
   with just git and Docker works with zero extra tools.

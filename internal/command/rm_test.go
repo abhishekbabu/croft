@@ -9,7 +9,7 @@ import (
 
 func TestRmTearsDown(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "my-feature", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "my-feature", "", "", "", &strings.Builder{}))
 	wt, _, _ := ctx.Store.Get("my-feature")
 
 	require.NoError(t, doRm(ctx, "my-feature", true, &strings.Builder{}))

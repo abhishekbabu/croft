@@ -12,7 +12,7 @@ import (
 // worktree.
 func NewStatusCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "status <branch>",
+		Use:   "status <slug>",
 		Short: "Show detail for one worktree",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -25,15 +25,15 @@ func NewStatusCmd() *cobra.Command {
 	}
 }
 
-// doStatus prints the registry detail for the worktree named by branch.
-func doStatus(ctx *appContext, branch string, out io.Writer) error {
-	slug := worktree.Slugify(branch)
+// doStatus prints the registry detail for the worktree with the given slug.
+func doStatus(ctx *appContext, slugArg string, out io.Writer) error {
+	slug := worktree.Slugify(slugArg)
 	wt, found, err := ctx.Store.Get(slug)
 	if err != nil {
 		return err
 	}
 	if !found {
-		return fmt.Errorf("no worktree %q (looked up slug %q)", branch, slug)
+		return fmt.Errorf("no worktree with slug %q", slug)
 	}
 
 	status := displayStatus(ctx.liveStatus(wt))

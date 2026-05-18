@@ -13,7 +13,7 @@ import (
 func TestNewCreatesWorktree(t *testing.T) {
 	ctx := testContext(t)
 	var out strings.Builder
-	require.NoError(t, doNew(ctx, "my-feature", "", "", &out))
+	require.NoError(t, doNew(ctx, "my-feature", "", "", "", &out))
 
 	wt, found, err := ctx.Store.Get("my-feature")
 	require.NoError(t, err)
@@ -23,14 +23,34 @@ func TestNewCreatesWorktree(t *testing.T) {
 	require.Equal(t, 3001, wt.Ports["db"])
 }
 
+func TestNewBranchDefaultsToSlug(t *testing.T) {
+	ctx := testContext(t)
+	require.NoError(t, doNew(ctx, "my-feature", "", "", "", &strings.Builder{}))
+
+	wt, _, _ := ctx.Store.Get("my-feature")
+	require.Equal(t, "my-feature", wt.Branch, "an unset --branch defaults to the slug")
+}
+
+func TestNewBranchIndependentOfSlug(t *testing.T) {
+	ctx := testContext(t)
+	// A worktree's slug is its stable identity; the branch it checks out is a
+	// separate thing, so --branch can name a branch unlike the slug.
+	require.NoError(t, doNew(ctx, "my-worktree", "roa-123-feature", "", "", &strings.Builder{}))
+
+	wt, found, err := ctx.Store.Get("my-worktree")
+	require.NoError(t, err)
+	require.True(t, found, "the worktree is keyed by its slug")
+	require.Equal(t, "roa-123-feature", wt.Branch, "--branch sets a branch independent of the slug")
+}
+
 func TestNewIsIdempotent(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "my-feature", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "my-feature", "", "", "", &strings.Builder{}))
 	wt, _, _ := ctx.Store.Get("my-feature")
 
 	// Re-running reconciles the existing worktree rather than failing.
 	var out strings.Builder
-	require.NoError(t, doNew(ctx, "my-feature", "", "", &out))
+	require.NoError(t, doNew(ctx, "my-feature", "", "", "", &out))
 	require.Contains(t, out.String(), "Reconciling")
 	again, _, _ := ctx.Store.Get("my-feature")
 	require.Equal(t, wt.Ports, again.Ports, "reconcile must not change ports")
@@ -38,8 +58,8 @@ func TestNewIsIdempotent(t *testing.T) {
 
 func TestNewAssignsDistinctPorts(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "first", "", "", &strings.Builder{}))
-	require.NoError(t, doNew(ctx, "second", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "first", "", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "second", "", "", "", &strings.Builder{}))
 
 	a, _, _ := ctx.Store.Get("first")
 	b, _, _ := ctx.Store.Get("second")
@@ -51,7 +71,7 @@ func TestNewWithAgent(t *testing.T) {
 	var out strings.Builder
 	// The "noop" exec agent runs `true`; with the none multiplexer it runs in
 	// the foreground and exits cleanly.
-	require.NoError(t, doNew(ctx, "agented", "", "noop", &out))
+	require.NoError(t, doNew(ctx, "agented", "", "", "noop", &out))
 	require.Contains(t, out.String(), "Launched agent")
 
 	rec, _, _ := ctx.Store.Get("agented")
@@ -60,14 +80,14 @@ func TestNewWithAgent(t *testing.T) {
 
 func TestNewWithUnknownAgent(t *testing.T) {
 	ctx := testContext(t)
-	require.Error(t, doNew(ctx, "x", "", "ghost", &strings.Builder{}),
+	require.Error(t, doNew(ctx, "x", "", "", "ghost", &strings.Builder{}),
 		"doNew with an unknown agent should fail")
 }
 
 func TestNewStartsDevServer(t *testing.T) {
 	ctx := testContext(t)
 	var out strings.Builder
-	require.NoError(t, doNew(ctx, "feat", "", "", &out))
+	require.NoError(t, doNew(ctx, "feat", "", "", "", &out))
 
 	// With the none multiplexer croft can't host the dev server, so it prints
 	// the command — with {port} substituted to the primary service's port.
@@ -114,6 +134,6 @@ func TestNewStartsDevServerInSession(t *testing.T) {
 	ctx.Providers.Multiplexer = fakeMux{managed: true}
 
 	var out strings.Builder
-	require.NoError(t, doNew(ctx, "feat", "", "", &out))
+	require.NoError(t, doNew(ctx, "feat", "", "", "", &out))
 	require.Contains(t, out.String(), "dev server: started")
 }

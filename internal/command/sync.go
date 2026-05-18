@@ -16,7 +16,7 @@ import (
 func NewSyncCmd() *cobra.Command {
 	var prune bool
 	cmd := &cobra.Command{
-		Use:   "sync [branch]",
+		Use:   "sync [slug]",
 		Short: "Sync worktree branch stacks against the trunk",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -24,29 +24,30 @@ func NewSyncCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			branch := ""
+			slug := ""
 			if len(args) == 1 {
-				branch = args[0]
+				slug = args[0]
 			}
-			return doSync(ctx, branch, prune, cmd.OutOrStdout())
+			return doSync(ctx, slug, prune, cmd.OutOrStdout())
 		},
 	}
 	cmd.Flags().BoolVar(&prune, "prune", false, "tear down worktrees whose branch stack is fully resolved")
 	return cmd
 }
 
-// doSync syncs one worktree (when branch is set) or every registered worktree.
-func doSync(ctx *appContext, branch string, prune bool, out io.Writer) error {
+// doSync syncs one worktree (when slug is set) or every registered worktree.
+func doSync(ctx *appContext, slugArg string, prune bool, out io.Writer) error {
 	reg, err := ctx.Store.Load()
 	if err != nil {
 		return err
 	}
 
 	var targets []state.Worktree
-	if branch != "" {
-		rec, ok := reg.Worktrees[worktree.Slugify(branch)]
+	if slugArg != "" {
+		slug := worktree.Slugify(slugArg)
+		rec, ok := reg.Worktrees[slug]
 		if !ok {
-			return fmt.Errorf("no worktree %q", branch)
+			return fmt.Errorf("no worktree with slug %q", slug)
 		}
 		targets = []state.Worktree{rec}
 	} else {
@@ -126,9 +127,9 @@ func syncOne(ctx *appContext, rec state.Worktree, prune bool, out io.Writer) err
 	if resolved {
 		if prune {
 			fmt.Fprintln(out, "  stack fully resolved — tearing down")
-			return doRm(ctx, rec.Branch, false, out)
+			return doRm(ctx, rec.Slug, false, out)
 		}
-		fmt.Fprintf(out, "  stack fully resolved — tear down with: croft rm %s\n", rec.Branch)
+		fmt.Fprintf(out, "  stack fully resolved — tear down with: croft rm %s\n", rec.Slug)
 	}
 	return nil
 }

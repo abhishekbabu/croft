@@ -24,7 +24,7 @@ func (resolvedStacker) AllResolved(provider.Worktree) (bool, error) { return tru
 
 func TestSyncNoStacker(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "feat", "", "", "", &strings.Builder{}))
 
 	var out strings.Builder
 	require.NoError(t, doSync(ctx, "", false, &out))
@@ -34,7 +34,7 @@ func TestSyncNoStacker(t *testing.T) {
 
 func TestSyncPrunesResolvedStack(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "feat", "", "", "", &strings.Builder{}))
 	rec, _, _ := ctx.Store.Get("feat")
 
 	// A fully-resolved stack plus --prune trips the teardown gate.
@@ -51,7 +51,7 @@ func TestSyncPrunesResolvedStack(t *testing.T) {
 
 func TestSyncRefusesMidRebase(t *testing.T) {
 	ctx := testContext(t)
-	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
+	require.NoError(t, doNew(ctx, "feat", "", "", "", &strings.Builder{}))
 
 	rec, _, _ := ctx.Store.Get("feat")
 	gd, err := ctx.Manager.GitDir(rec.Path)

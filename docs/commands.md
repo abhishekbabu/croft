@@ -34,12 +34,16 @@ team-shareable. See [Configuration](configuration.md).
 ## `croft new`
 
 ```
-croft new <branch> [--from <start-point>] [--agent <name>]
+croft new <slug> [--branch <name>] [--from <start-point>] [--agent <name>]
 ```
 
-Create a fully isolated environment for `<branch>`. In order, `new`:
+Create a fully isolated environment for the worktree `<slug>`. The slug is the
+worktree's **stable identity** — it names the checkout directory and every
+derived resource, and it does not change as the branch stack inside the
+worktree moves. In order, `new`:
 
-1. creates the git worktree (a new branch, or checks out an existing one),
+1. creates the git worktree, checking out `--branch` — a new branch, or an
+   existing one,
 2. allocates a unique port per declared service,
 3. records the worktree in the registry,
 4. creates the terminal session,
@@ -51,6 +55,10 @@ Create a fully isolated environment for `<branch>`. In order, `new`:
 
 Flags:
 
+- `--branch <name>` — the branch to check out in the worktree. Defaults to the
+  slug, so `croft new my-feature` creates a worktree and a branch both named
+  `my-feature`. Pass `--branch` when a worktree should host a branch — or a
+  stack of branches — whose name differs from its slug.
 - `--from <start-point>` — start point for a newly created branch (default:
   current HEAD). Ignored when the branch already exists.
 - `--agent <name>` — launch a configured agent into the worktree's session.
@@ -89,7 +97,7 @@ List every croft-managed worktree as a table: `SLUG`, `BRANCH`, `STATUS`,
 ## `croft status`
 
 ```
-croft status <branch>
+croft status <slug>
 ```
 
 Show detail for one worktree: slug, branch, path, URL (if routed), whether the
@@ -100,11 +108,11 @@ directory exists, derived status, ports, and creation time.
 ## `croft sync`
 
 ```
-croft sync [branch] [--prune]
+croft sync [slug] [--prune]
 ```
 
 Rebase branch stacks against the trunk via the stacker provider. With no
-argument it syncs every registered worktree; with `[branch]` it syncs one.
+argument it syncs every registered worktree; with `[slug]` it syncs one.
 
 Per worktree, `sync`:
 
@@ -136,7 +144,7 @@ invocation on one repo. Run separate `croft sync` invocations one at a time.
 ## `croft rm`
 
 ```
-croft rm <branch> [--force]
+croft rm <slug> [--force]
 ```
 
 Tear a worktree and its environment down, in reverse of `new`: `pre_remove`

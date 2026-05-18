@@ -50,8 +50,9 @@ The result is a committed, team-shared `croft.toml` at the repository root. See
 croft new my-feature
 ```
 
-This creates a git worktree for the `my-feature` branch and, depending on the
-configured providers:
+The argument is the worktree's **slug** — its stable identity. This creates a
+git worktree named `my-feature`, checks out a branch of the same name, and,
+depending on the configured providers:
 
 - allocates a unique port for each declared service,
 - brings up an isolated container stack,
@@ -61,6 +62,14 @@ configured providers:
 
 `croft new` is idempotent — running it again on an existing worktree
 re-converges the environment instead of failing.
+
+The slug and the branch are independent. Pass `--branch` to check out a branch
+whose name differs from the slug — which is what lets one worktree host a whole
+stack of branches without its identity (and resources) shifting underneath it:
+
+```sh
+croft new my-feature --branch feature/login-form
+```
 
 To launch an AI coding agent into the worktree at the same time:
 

@@ -14,34 +14,40 @@ import (
 )
 
 // NewNewCmd builds the `croft new` command, which creates a fully isolated
-// environment for a branch: worktree, port set, container stack, and session.
+// environment for a worktree: checkout, port set, container stack, and session.
 func NewNewCmd() *cobra.Command {
-	var from, agentName string
+	var branch, from, agentName string
 	cmd := &cobra.Command{
-		Use:   "new <branch>",
-		Short: "Create an isolated environment for a branch",
+		Use:   "new <slug>",
+		Short: "Create an isolated environment for a worktree",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, err := contextFromCwd()
 			if err != nil {
 				return err
 			}
-			return doNew(ctx, args[0], from, agentName, cmd.OutOrStdout())
+			return doNew(ctx, args[0], branch, from, agentName, cmd.OutOrStdout())
 		},
 	}
+	cmd.Flags().StringVar(&branch, "branch", "", "branch to check out in the worktree (default: the slug)")
 	cmd.Flags().StringVar(&from, "from", "", "start point for a new branch (default: current HEAD)")
 	cmd.Flags().StringVar(&agentName, "agent", "", "launch a configured agent into the worktree")
 	return cmd
 }
 
-// doNew creates the worktree for branch and reconciles its environment. It is
-// idempotent: re-running it on an existing worktree re-converges the container
-// stack and session rather than failing. When agentName is set, the agent is
-// launched into the worktree's session.
-func doNew(ctx *appContext, branch, from, agentName string, out io.Writer) error {
-	slug := worktree.Slugify(branch)
+// doNew creates the worktree identified by slug and reconciles its
+// environment. The worktree checks out branch, which defaults to the slug; the
+// slug is the worktree's stable identity and does not change as its branch
+// stack moves. It is idempotent: re-running it on an existing worktree
+// re-converges the container stack and session rather than failing. When
+// agentName is set, the agent is launched into the worktree's session.
+func doNew(ctx *appContext, slugArg, branch, from, agentName string, out io.Writer) error {
+	slug := worktree.Slugify(slugArg)
 	if slug == "" {
-		return fmt.Errorf("branch %q produces an empty slug", branch)
+		return fmt.Errorf("%q produces an empty slug", slugArg)
+	}
+	if branch == "" {
+		branch = slug
 	}
 
 	reg, err := ctx.Store.Load()
