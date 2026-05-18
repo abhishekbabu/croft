@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/abhishekbabu/croft/internal/config"
 )
@@ -35,6 +36,12 @@ func New(p config.ProvidersSection, m config.MachineConfig, stateDir string) (Se
 	case "tmux":
 		s.Multiplexer = NewTmuxMultiplexer(m.Bin("tmux"))
 	case "cmux":
+		// cmux can only drive surfaces from inside a cmux terminal; fail fast
+		// here rather than partway through a command.
+		if os.Getenv("CMUX_SURFACE_ID") == "" {
+			return Set{}, fmt.Errorf(`providers.multiplexer is "cmux" but croft is not ` +
+				`running inside a cmux terminal ($CMUX_SURFACE_ID is unset)`)
+		}
 		s.Multiplexer = NewCmuxMultiplexer(m.Bin("cmux"), stateDir)
 	default:
 		return Set{}, fmt.Errorf("unsupported multiplexer provider %q", p.Multiplexer)

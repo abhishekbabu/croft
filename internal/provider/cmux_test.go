@@ -104,11 +104,20 @@ func TestCmuxRequiresSurface(t *testing.T) {
 }
 
 func TestNewSelectsCmux(t *testing.T) {
+	t.Setenv("CMUX_SURFACE_ID", "test-surface")
 	set, err := New(config.ProvidersSection{Multiplexer: "cmux"}, config.MachineConfig{}, t.TempDir())
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	if _, ok := set.Multiplexer.(*CmuxMultiplexer); !ok {
 		t.Errorf("multiplexer = %T, want *CmuxMultiplexer", set.Multiplexer)
+	}
+}
+
+func TestNewRejectsCmuxOutsideCmux(t *testing.T) {
+	t.Setenv("CMUX_SURFACE_ID", "")
+	_, err := New(config.ProvidersSection{Multiplexer: "cmux"}, config.MachineConfig{}, t.TempDir())
+	if err == nil {
+		t.Fatal("New with multiplexer=cmux outside a cmux terminal should error")
 	}
 }
