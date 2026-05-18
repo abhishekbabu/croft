@@ -128,23 +128,30 @@ func (s *Store) Get(slug string) (wt Worktree, found bool, err error) {
 	return wt, found, nil
 }
 
-// Put inserts or replaces a worktree record.
+// Put inserts or replaces a worktree record. The read-modify-write runs under
+// an exclusive registry lock so concurrent croft invocations cannot clobber
+// each other.
 func (s *Store) Put(wt Worktree) error {
-	r, err := s.Load()
-	if err != nil {
-		return err
-	}
-	r.Worktrees[wt.Slug] = wt
-	return s.Save(r)
+	return s.withLock(func() error {
+		r, err := s.Load()
+		if err != nil {
+			return err
+		}
+		r.Worktrees[wt.Slug] = wt
+		return s.Save(r)
+	})
 }
 
 // Delete removes the record for slug. Deleting an absent slug is not an error
-// (idempotent teardown).
+// (idempotent teardown). The read-modify-write runs under an exclusive
+// registry lock.
 func (s *Store) Delete(slug string) error {
-	r, err := s.Load()
-	if err != nil {
-		return err
-	}
-	delete(r.Worktrees, slug)
-	return s.Save(r)
+	return s.withLock(func() error {
+		r, err := s.Load()
+		if err != nil {
+			return err
+		}
+		delete(r.Worktrees, slug)
+		return s.Save(r)
+	})
 }
