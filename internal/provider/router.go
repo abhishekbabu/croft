@@ -4,6 +4,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/abhishekbabu/croft/internal/sh"
 )
 
 // Router gives a worktree a stable URL / route.
@@ -62,23 +64,23 @@ func (r *PortlessRouter) Register(wt Worktree) (string, error) {
 	}
 	for _, svc := range services {
 		name := aliasName(wt, svc)
-		if _, err := run(r.bin, "", nil, "alias", name, strconv.Itoa(wt.Ports[svc])); err != nil {
+		if _, err := sh.Capture(r.bin, "", nil, "alias", name, strconv.Itoa(wt.Ports[svc])); err != nil {
 			return "", err
 		}
 	}
-	res, err := run(r.bin, "", nil, "get", aliasName(wt, services[0]))
+	res, err := sh.Capture(r.bin, "", nil, "get", aliasName(wt, services[0]))
 	if err != nil {
 		// Routes are registered; the URL lookup is best-effort.
 		return "", nil
 	}
-	return strings.TrimSpace(res.stdout), nil
+	return strings.TrimSpace(res), nil
 }
 
 // Release removes the worktree's portless routes. It is best-effort: a route
 // that is already gone does not block teardown.
 func (r *PortlessRouter) Release(wt Worktree) error {
 	for _, svc := range sortedServices(wt.Ports) {
-		_, _ = run(r.bin, "", nil, "alias", "--remove", aliasName(wt, svc))
+		_, _ = sh.Capture(r.bin, "", nil, "alias", "--remove", aliasName(wt, svc))
 	}
 	return nil
 }

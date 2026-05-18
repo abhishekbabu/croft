@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/abhishekbabu/croft/internal/sh"
 	"github.com/spf13/cobra"
 )
 
@@ -105,12 +105,11 @@ func gatherAnswers(p *config.ProjectConfig, in *bufio.Reader, out io.Writer) {
 
 // gitRepoRoot resolves the top level of the git repo containing dir.
 func gitRepoRoot(dir string) (string, error) {
-	cmd := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel")
-	out, err := cmd.Output()
+	out, err := sh.Capture("git", dir, nil, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", fmt.Errorf("not inside a git repository (run `git init` first)")
 	}
-	return strings.TrimSpace(string(out)), nil
+	return strings.TrimSpace(out), nil
 }
 
 // prompter reads simple line-based answers from a reader.

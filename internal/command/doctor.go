@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/abhishekbabu/croft/internal/provider"
+	"github.com/abhishekbabu/croft/internal/sh"
 	"github.com/abhishekbabu/croft/internal/worktree"
 	"github.com/spf13/cobra"
 )
@@ -178,17 +178,17 @@ func checkOrphanDirs(ctx *appContext) []finding {
 // checkLeakedContainers finds docker compose stacks named for this project
 // that have no matching worktree.
 func checkLeakedContainers(ctx *appContext) []finding {
-	if _, err := exec.LookPath("docker"); err != nil {
+	if !sh.Look("docker") {
 		return nil
 	}
-	out, err := exec.Command("docker", "compose", "ls", "--all", "--format", "json").Output()
+	out, err := sh.Capture("docker", "", nil, "compose", "ls", "--all", "--format", "json")
 	if err != nil {
 		return nil
 	}
 	var projects []struct {
 		Name string `json:"Name"`
 	}
-	if json.Unmarshal(out, &projects) != nil {
+	if json.Unmarshal([]byte(out), &projects) != nil {
 		return nil
 	}
 	reg, err := ctx.Store.Load()
@@ -209,7 +209,8 @@ func checkLeakedContainers(ctx *appContext) []finding {
 		fs = append(fs, finding{
 			desc: fmt.Sprintf("leaked container stack %q (no matching worktree)", name),
 			fix: func() error {
-				return exec.Command("docker", "compose", "-p", name, "down", "-v").Run()
+				_, err := sh.Capture("docker", "", nil, "compose", "-p", name, "down", "-v")
+				return err
 			},
 		})
 	}

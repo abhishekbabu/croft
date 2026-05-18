@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/abhishekbabu/croft/internal/sh"
 )
 
 // Infra manages a worktree's container stack.
@@ -47,10 +49,10 @@ func NewComposeInfra(bin string) *ComposeInfra {
 
 // compose runs `docker compose -p <project> <args...>` in the worktree, with
 // croft's environment exported so the compose file can read ${SERVICE_PORT}.
-func (c *ComposeInfra) compose(wt Worktree, args ...string) (runResult, error) {
+func (c *ComposeInfra) compose(wt Worktree, args ...string) (string, error) {
 	full := append([]string{"compose", "-p", ProjectName(wt)}, args...)
 	env := append(os.Environ(), envSlice(Env(wt))...)
-	return run(c.bin, wt.Path, env, full...)
+	return sh.Capture(c.bin, wt.Path, env, full...)
 }
 
 // Up brings the worktree's compose stack online in the background.
@@ -71,7 +73,7 @@ func (c *ComposeInfra) Status(wt Worktree) (InfraState, error) {
 	if err != nil {
 		return InfraState{}, err
 	}
-	ids := strings.Fields(res.stdout)
+	ids := strings.Fields(res)
 	if len(ids) == 0 {
 		return InfraState{Up: false, Detail: "no containers"}, nil
 	}

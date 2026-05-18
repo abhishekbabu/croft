@@ -3,9 +3,10 @@ package provider
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/abhishekbabu/croft/internal/sh"
 )
 
 // Multiplexer manages a terminal session per worktree.
@@ -49,11 +50,7 @@ func (NoneMultiplexer) RunWindow(_, _, dir string, env map[string]string, argv [
 	if len(argv) == 0 {
 		return fmt.Errorf("RunWindow: empty argv")
 	}
-	cmd := exec.Command(argv[0], argv[1:]...)
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), envSlice(env)...)
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	return cmd.Run()
+	return sh.Attach(argv[0], dir, append(os.Environ(), envSlice(env)...), argv[1:]...)
 }
 
 // Attach does nothing.
@@ -84,11 +81,11 @@ func (t *TmuxMultiplexer) Managed() bool { return true }
 
 // HasWindow reports whether a window of the given name exists in the session.
 func (t *TmuxMultiplexer) HasWindow(name, window string) bool {
-	res, err := run(t.bin, "", nil, "list-windows", "-t", name, "-F", "#{window_name}")
+	res, err := sh.Capture(t.bin, "", nil, "list-windows", "-t", name, "-F", "#{window_name}")
 	if err != nil {
 		return false
 	}
-	for _, w := range strings.Split(res.stdout, "\n") {
+	for _, w := range strings.Split(res, "\n") {
 		if strings.TrimSpace(w) == window {
 			return true
 		}
@@ -98,7 +95,8 @@ func (t *TmuxMultiplexer) HasWindow(name, window string) bool {
 
 // hasSession reports whether a tmux session with the given name exists.
 func (t *TmuxMultiplexer) hasSession(name string) bool {
-	return exec.Command(t.bin, "has-session", "-t", name).Run() == nil
+	_, err := sh.Capture(t.bin, "", nil, "has-session", "-t", name)
+	return err == nil
 }
 
 // CreateSession starts a detached tmux session, idempotently.
@@ -110,7 +108,7 @@ func (t *TmuxMultiplexer) CreateSession(name, dir string, env map[string]string)
 	for k, v := range env {
 		args = append(args, "-e", k+"="+v)
 	}
-	_, err := run(t.bin, "", nil, args...)
+	_, err := sh.Capture(t.bin, "", nil, args...)
 	return err
 }
 
@@ -127,15 +125,13 @@ func (t *TmuxMultiplexer) RunWindow(name, window, dir string, env map[string]str
 		args = append(args, "-e", k+"="+v)
 	}
 	args = append(args, argv...)
-	_, err := run(t.bin, "", nil, args...)
+	_, err := sh.Capture(t.bin, "", nil, args...)
 	return err
 }
 
 // Attach connects the current terminal to the tmux session.
 func (t *TmuxMultiplexer) Attach(name string) error {
-	cmd := exec.Command(t.bin, "attach-session", "-t", name)
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	return cmd.Run()
+	return sh.Attach(t.bin, "", nil, "attach-session", "-t", name)
 }
 
 // Kill terminates the tmux session, idempotently.
@@ -143,7 +139,7 @@ func (t *TmuxMultiplexer) Kill(name string) error {
 	if !t.hasSession(name) {
 		return nil
 	}
-	_, err := run(t.bin, "", nil, "kill-session", "-t", name)
+	_, err := sh.Capture(t.bin, "", nil, "kill-session", "-t", name)
 	return err
 }
 
@@ -153,7 +149,7 @@ func (t *TmuxMultiplexer) CapturePane(name, window string, lines int) (string, e
 	if window != "" {
 		target = name + ":" + window
 	}
-	res, err := run(t.bin, "", nil,
+	res, err := sh.Capture(t.bin, "", nil,
 		"capture-pane", "-p", "-t", target, "-S", "-"+strconv.Itoa(lines))
-	return res.stdout, err
+	return res, err
 }

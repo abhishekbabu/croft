@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/abhishekbabu/croft/internal/sh"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,7 +65,7 @@ func TestNoneProvidersAreInert(t *testing.T) {
 }
 
 func TestTmuxLifecycle(t *testing.T) {
-	if !available("tmux") {
+	if !sh.Look("tmux") {
 		t.Skip("tmux not installed")
 	}
 	tm := NewTmuxMultiplexer("")

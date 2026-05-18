@@ -4,10 +4,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/abhishekbabu/croft/internal/command"
+	"github.com/abhishekbabu/croft/internal/sh"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +19,13 @@ import (
 var version = "dev"
 
 func main() {
-	if err := newRootCmd().Execute(); err != nil {
+	// Cancel on SIGINT/SIGTERM so Ctrl-C terminates in-flight child processes:
+	// every external command derives its context from sh's base context.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	sh.SetBaseContext(ctx)
+
+	if err := newRootCmd().ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, "croft:", err)
 		os.Exit(1)
 	}

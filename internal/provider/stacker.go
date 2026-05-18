@@ -3,6 +3,8 @@ package provider
 import (
 	"regexp"
 	"strings"
+
+	"github.com/abhishekbabu/croft/internal/sh"
 )
 
 // Stacker syncs a worktree's branch stack against the trunk and reports stack
@@ -55,22 +57,22 @@ func NewGraphiteStacker(bin string) *GraphiteStacker {
 // so it never blocks on a prompt; merged-branch teardown is croft's job, not
 // gt's, so --force is deliberately omitted.
 func (g *GraphiteStacker) Sync(wt Worktree) (StackState, error) {
-	res, err := run(g.bin, wt.Path, nil, "sync", "--no-interactive")
+	res, err := sh.Capture(g.bin, wt.Path, nil, "sync", "--no-interactive")
 	if err != nil {
 		return StackState{}, err
 	}
 	branches, _ := g.StackBranches(wt)
-	return StackState{Branches: branches, Rebased: true, Detail: strings.TrimSpace(res.stdout)}, nil
+	return StackState{Branches: branches, Rebased: true, Detail: strings.TrimSpace(res)}, nil
 }
 
 // StackBranches lists the branches in the worktree's current stack, trunk
 // excluded.
 func (g *GraphiteStacker) StackBranches(wt Worktree) ([]string, error) {
-	res, err := run(g.bin, wt.Path, nil, "log", "short", "-s")
+	res, err := sh.Capture(g.bin, wt.Path, nil, "log", "short", "-s")
 	if err != nil {
 		return nil, err
 	}
-	return parseStackBranches(res.stdout), nil
+	return parseStackBranches(res), nil
 }
 
 // parseStackBranches extracts branch names from `gt log short -s` output:

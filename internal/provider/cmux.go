@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/abhishekbabu/croft/internal/sh"
 )
 
 // CmuxMultiplexer drives sessions with cmux. cmux's model maps onto the
@@ -73,10 +75,10 @@ func (c *CmuxMultiplexer) ensureFocused() error {
 	}
 	// Focusing croft's own surface is legitimate — it is where the user just
 	// ran croft. It also recovers focus if a previous split stole it.
-	_, _ = run(c.bin, "", nil, "focus-panel", "--panel", c.surfaceID)
+	_, _ = sh.Capture(c.bin, "", nil, "focus-panel", "--panel", c.surfaceID)
 	time.Sleep(cmuxFocusDelay)
 
-	res, err := run(c.bin, "", nil, "identify", "--json")
+	res, err := sh.Capture(c.bin, "", nil, "identify", "--json")
 	if err != nil {
 		return fmt.Errorf("cmux: identify: %w", err)
 	}
@@ -88,7 +90,7 @@ func (c *CmuxMultiplexer) ensureFocused() error {
 			SurfaceRef string `json:"surface_ref"`
 		} `json:"focused"`
 	}
-	if err := json.Unmarshal([]byte(res.stdout), &id); err != nil {
+	if err := json.Unmarshal([]byte(res), &id); err != nil {
 		return fmt.Errorf("cmux: parse identify: %w", err)
 	}
 	if id.Caller.SurfaceRef == "" || id.Caller.SurfaceRef != id.Focused.SurfaceRef {
@@ -130,12 +132,12 @@ func (w cmuxWorkspace) hasSurface(id string) bool {
 
 // loadTree returns the full window/workspace/pane/surface tree.
 func (c *CmuxMultiplexer) loadTree() (cmuxTree, error) {
-	res, err := run(c.bin, "", nil, "--json", "--id-format", "uuids", "tree", "--all")
+	res, err := sh.Capture(c.bin, "", nil, "--json", "--id-format", "uuids", "tree", "--all")
 	if err != nil {
 		return cmuxTree{}, err
 	}
 	var t cmuxTree
-	if err := json.Unmarshal([]byte(res.stdout), &t); err != nil {
+	if err := json.Unmarshal([]byte(res), &t); err != nil {
 		return cmuxTree{}, fmt.Errorf("cmux: parse tree: %w", err)
 	}
 	return t, nil
@@ -166,7 +168,7 @@ func (c *CmuxMultiplexer) CreateSession(name, dir string, _ map[string]string) e
 	if _, ok := c.findWorkspace(name); ok {
 		return nil
 	}
-	_, err := run(c.bin, "", nil, "new-workspace", "--name", name, "--cwd", dir)
+	_, err := sh.Capture(c.bin, "", nil, "new-workspace", "--name", name, "--cwd", dir)
 	return err
 }
 
@@ -185,12 +187,12 @@ func (c *CmuxMultiplexer) RunWindow(name, window, _ string, env map[string]strin
 		return fmt.Errorf("cmux: no workspace %q", name)
 	}
 
-	res, err := run(c.bin, "", nil, "rpc", "surface.split",
+	res, err := sh.Capture(c.bin, "", nil, "rpc", "surface.split",
 		fmt.Sprintf(`{"direction":"right","surface_id":%q}`, c.surfaceID))
 	if err != nil {
 		return fmt.Errorf("cmux: surface.split: %w", err)
 	}
-	surfaceID, err := parseSurfaceSplit(res.stdout)
+	surfaceID, err := parseSurfaceSplit(res)
 	if err != nil {
 		return err
 	}
@@ -198,14 +200,14 @@ func (c *CmuxMultiplexer) RunWindow(name, window, _ string, env map[string]strin
 	// Send the command while the split is still in croft's focused workspace,
 	// where its terminal is live; only then move it to the worktree workspace.
 	time.Sleep(cmuxReadyDelay)
-	if _, err := run(c.bin, "", nil, "send", "--surface", surfaceID, "--", cmuxCommandLine(env, argv)); err != nil {
+	if _, err := sh.Capture(c.bin, "", nil, "send", "--surface", surfaceID, "--", cmuxCommandLine(env, argv)); err != nil {
 		return fmt.Errorf("cmux: send: %w", err)
 	}
-	if _, err := run(c.bin, "", nil, "send-key", "--surface", surfaceID, "enter"); err != nil {
+	if _, err := sh.Capture(c.bin, "", nil, "send-key", "--surface", surfaceID, "enter"); err != nil {
 		return fmt.Errorf("cmux: send-key: %w", err)
 	}
 	time.Sleep(cmuxSettleDelay)
-	if _, err := run(c.bin, "", nil, "move-surface", "--surface", surfaceID,
+	if _, err := sh.Capture(c.bin, "", nil, "move-surface", "--surface", surfaceID,
 		"--workspace", ws.ID, "--focus", "false"); err != nil {
 		return fmt.Errorf("cmux: move-surface: %w", err)
 	}
@@ -240,15 +242,15 @@ func (c *CmuxMultiplexer) CapturePane(name, window string, lines int) (string, e
 	if !ok {
 		return "", fmt.Errorf("cmux: no window %q in workspace %q", window, name)
 	}
-	res, err := run(c.bin, "", nil, "read-screen", "--surface", id, "--lines", strconv.Itoa(lines))
-	return res.stdout, err
+	res, err := sh.Capture(c.bin, "", nil, "read-screen", "--surface", id, "--lines", strconv.Itoa(lines))
+	return res, err
 }
 
 // Kill closes the workspace and forgets its tracked windows. Idempotent.
 func (c *CmuxMultiplexer) Kill(name string) error {
 	ws, ok := c.findWorkspace(name)
 	if ok {
-		if _, err := run(c.bin, "", nil, "close-workspace", "--workspace", ws.ID); err != nil {
+		if _, err := sh.Capture(c.bin, "", nil, "close-workspace", "--workspace", ws.ID); err != nil {
 			return err
 		}
 	}
@@ -261,7 +263,7 @@ func (c *CmuxMultiplexer) Attach(name string) error {
 	if !ok {
 		return fmt.Errorf("cmux: no workspace %q", name)
 	}
-	_, err := run(c.bin, "", nil, "select-workspace", "--workspace", ws.ID)
+	_, err := sh.Capture(c.bin, "", nil, "select-workspace", "--workspace", ws.ID)
 	return err
 }
 

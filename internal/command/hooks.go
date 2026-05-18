@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
+
+	"github.com/abhishekbabu/croft/internal/sh"
 )
 
 // runHooks executes a list of shell hook commands in dir with env exported.
@@ -19,12 +20,7 @@ func runHooks(label string, cmds []string, dir string, env map[string]string, ou
 	}
 	for _, c := range cmds {
 		fmt.Fprintf(out, "  hook (%s): %s\n", label, c)
-		cmd := exec.Command("sh", "-c", c)
-		cmd.Dir = dir
-		cmd.Env = environ
-		cmd.Stdout = out
-		cmd.Stderr = out
-		if err := cmd.Run(); err != nil {
+		if err := sh.StreamTo(out, "sh", dir, environ, "-c", c); err != nil {
 			return fmt.Errorf("%s hook failed (%s): %w", label, c, err)
 		}
 	}

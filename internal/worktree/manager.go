@@ -2,11 +2,11 @@ package worktree
 
 import (
 	"bufio"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/abhishekbabu/croft/internal/sh"
 )
 
 // GitWorktree is one entry parsed from `git worktree list --porcelain`.
@@ -36,18 +36,7 @@ func (m *Manager) git(args ...string) (string, error) {
 
 // gitAt runs a git subcommand in dir and returns stdout.
 func gitAt(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-	var out, errb strings.Builder
-	cmd.Stdout = &out
-	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(errb.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
-	}
-	return out.String(), nil
+	return sh.Capture("git", dir, nil, args...)
 }
 
 // GitDir returns the absolute .git directory for the worktree at path.
@@ -81,9 +70,9 @@ func (m *Manager) InRebase(path string) bool {
 // IsDirty reports whether the worktree at path has uncommitted changes in the
 // working tree or the index.
 func (m *Manager) IsDirty(path string) bool {
-	worktreeDirty := exec.Command("git", "-C", path, "diff", "--quiet").Run() != nil
-	indexDirty := exec.Command("git", "-C", path, "diff", "--cached", "--quiet").Run() != nil
-	return worktreeDirty || indexDirty
+	_, worktreeErr := sh.Capture("git", path, nil, "diff", "--quiet")
+	_, indexErr := sh.Capture("git", path, nil, "diff", "--cached", "--quiet")
+	return worktreeErr != nil || indexErr != nil
 }
 
 // Stash saves uncommitted changes (including untracked files) and reports

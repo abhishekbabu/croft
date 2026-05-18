@@ -1,6 +1,10 @@
 package provider
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/abhishekbabu/croft/internal/sh"
+)
 
 // prRecord is one entry from `gh pr list --json headRefName,state`.
 type prRecord struct {
@@ -26,13 +30,13 @@ func parsePRStates(data []byte) map[string]string {
 // gh being unavailable yields an empty map, not an error, so stack resolution
 // degrades gracefully.
 func loadPRStates(dir string) map[string]string {
-	if !available("gh") {
+	if !sh.Look("gh") {
 		return map[string]string{}
 	}
-	res, err := run("gh", dir, nil,
+	res, err := sh.Capture("gh", dir, nil,
 		"pr", "list", "--state", "all", "--json", "headRefName,state", "--limit", "300")
 	if err != nil {
 		return map[string]string{}
 	}
-	return parsePRStates([]byte(res.stdout))
+	return parsePRStates([]byte(res))
 }
