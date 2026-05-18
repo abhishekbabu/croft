@@ -31,6 +31,29 @@ archives:
 checksum:
   name_template: checksums.txt
 
+homebrew_casks:
+  - name: croft
+    # The cask is committed to a separate tap repo. The default GITHUB_TOKEN
+    # is scoped to this repo only, so a cross-repo PAT is passed via the
+    # HOMEBREW_TAP_TOKEN secret (see .github/workflows/release.yml).
+    repository:
+      owner: abhishekbabu
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Casks
+    homepage: "https://github.com/abhishekbabu/croft"
+    description: "Worktrees that actually work — one isolated dev environment per git branch"
+    binaries:
+      - croft
+    # The release binaries are unsigned, so macOS Gatekeeper quarantines them.
+    # Strip the quarantine attribute on install so croft runs without prompts.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/croft"]
+          end
+
 changelog:
   use: github
   sort: asc
