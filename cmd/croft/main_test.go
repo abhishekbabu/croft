@@ -2,8 +2,9 @@ package main
 
 import (
 	"bytes"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRootCmdRuns(t *testing.T) {
@@ -11,9 +12,7 @@ func TestRootCmdRuns(t *testing.T) {
 	cmd.SetArgs([]string{})
 	cmd.SetOut(new(bytes.Buffer))
 	cmd.SetErr(new(bytes.Buffer))
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("root command failed: %v", err)
-	}
+	require.NoError(t, cmd.Execute())
 }
 
 func TestRootCmdVersion(t *testing.T) {
@@ -22,10 +21,6 @@ func TestRootCmdVersion(t *testing.T) {
 	cmd.SetArgs([]string{"--version"})
 	cmd.SetOut(out)
 	cmd.SetErr(new(bytes.Buffer))
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("--version failed: %v", err)
-	}
-	if !strings.Contains(out.String(), "croft") {
-		t.Fatalf("version output missing tool name: %q", out.String())
-	}
+	require.NoError(t, cmd.Execute())
+	require.Contains(t, out.String(), "croft")
 }

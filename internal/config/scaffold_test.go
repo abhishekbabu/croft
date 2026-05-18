@@ -3,8 +3,9 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func sampleProject() ProjectConfig {
@@ -19,10 +20,10 @@ func sampleProject() ProjectConfig {
 			Services: []string{"api", "postgres"},
 		},
 		Providers: ProvidersSection{
-			Multiplexer: "tmux", Infra: "docker-compose",
-			Router: "none", Stacker: "none", Coordination: "basic",
+			Multiplexer: MultiplexerTmux, Infra: InfraDockerCompose,
+			Router: RouterNone, Stacker: StackerNone, Coordination: CoordinationBasic,
 		},
-		Agents: []AgentConfig{{Name: "claude", Runner: "claude"}},
+		Agents: []AgentConfig{{Name: "claude", Runner: RunnerClaude}},
 		Hooks:  HooksSection{PostCreate: []string{"docker compose up -d"}},
 	}
 	p.applyDefaults()
@@ -34,41 +35,27 @@ func TestScaffoldRoundTrips(t *testing.T) {
 	rendered := Scaffold(p)
 
 	got, err := DecodeProject([]byte(rendered))
-	if err != nil {
-		t.Fatalf("scaffolded TOML failed to decode:\n%s\nerror: %v", rendered, err)
-	}
-	if got.Project.Name != p.Project.Name {
-		t.Errorf("name round-trip: got %q want %q", got.Project.Name, p.Project.Name)
-	}
-	if got.Providers != p.Providers {
-		t.Errorf("providers round-trip: got %+v want %+v", got.Providers, p.Providers)
-	}
-	if len(got.Agents) != 1 || got.Agents[0].Runner != "claude" {
-		t.Errorf("agents round-trip: got %+v", got.Agents)
-	}
-	if got.Ports.Range != "3000-3999" {
-		t.Errorf("ports round-trip: got %q", got.Ports.Range)
-	}
+	require.NoError(t, err, "scaffolded TOML failed to decode:\n%s", rendered)
+	require.Equal(t, p.Project.Name, got.Project.Name)
+	require.Equal(t, p.Providers, got.Providers)
+	require.Len(t, got.Agents, 1)
+	require.Equal(t, RunnerClaude, got.Agents[0].Runner)
+	require.Equal(t, "3000-3999", got.Ports.Range)
 }
 
 func TestScaffoldEmptyCollectionsAreValidTOML(t *testing.T) {
 	p := ProjectConfig{Project: ProjectSection{Name: "demo"}}
 	p.applyDefaults()
 	rendered := Scaffold(p)
-	if !strings.Contains(rendered, "copy_files = []") {
-		t.Errorf("empty slice should render as []:\n%s", rendered)
-	}
-	if _, err := DecodeProject([]byte(rendered)); err != nil {
-		t.Fatalf("scaffold of minimal config must decode: %v", err)
-	}
+	require.Contains(t, rendered, "copy_files = []", "empty slice should render as []")
+
+	_, err := DecodeProject([]byte(rendered))
+	require.NoError(t, err, "scaffold of minimal config must decode")
 }
 
 func TestExampleConfigIsValid(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", "examples", "croft.toml"))
-	if err != nil {
-		t.Fatalf("read example config: %v", err)
-	}
-	if _, err := DecodeProject(data); err != nil {
-		t.Fatalf("examples/croft.toml is invalid: %v", err)
-	}
+	require.NoError(t, err)
+	_, err = DecodeProject(data)
+	require.NoError(t, err, "examples/croft.toml is invalid")
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/abhishekbabu/croft/internal/config"
 	"github.com/abhishekbabu/croft/internal/provider"
 	"github.com/abhishekbabu/croft/internal/state"
+	"github.com/stretchr/testify/require"
 )
 
 // fakeMux is a controllable Multiplexer for status-derivation tests.
@@ -34,23 +35,18 @@ func setupRepo(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
 	repo := filepath.Join(tmp, "repo")
-	if err := os.MkdirAll(repo, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(repo, 0o755))
 	git := func(args ...string) {
 		t.Helper()
 		cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
 		cmd.Env = append(os.Environ(),
 			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
 			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v\n%s", args, err, out)
-		}
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v\n%s", args, out)
 	}
 	git("init")
-	if err := os.WriteFile(filepath.Join(repo, "f"), []byte("x"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "f"), []byte("x"), 0o644))
 	git("add", "-A")
 	git("commit", "-m", "init")
 
@@ -68,154 +64,97 @@ name = "noop"
 runner = "exec"
 command = ["true"]
 `
-	if err := os.WriteFile(filepath.Join(repo, "croft.toml"), []byte(cfg), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(repo, "croft.toml"), []byte(cfg), 0o644))
 	t.Setenv("XDG_DATA_HOME", filepath.Join(tmp, "data"))
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmp, "cfg"))
 	return repo
 }
 
+// testContext sets up a repo and returns its loaded context.
+func testContext(t *testing.T) *appContext {
+	t.Helper()
+	ctx, err := loadContext(setupRepo(t))
+	require.NoError(t, err, "loadContext")
+	return ctx
+}
+
 func TestNewLsStatusRm(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
+	ctx := testContext(t)
 
 	var out strings.Builder
-	if err := doNew(ctx, "my-feature", "", "", &out); err != nil {
-		t.Fatalf("doNew: %v", err)
-	}
+	require.NoError(t, doNew(ctx, "my-feature", "", "", &out))
+
 	wt, found, err := ctx.Store.Get("my-feature")
-	if err != nil || !found {
-		t.Fatalf("registry missing worktree: found=%v err=%v", found, err)
-	}
-	if !dirExists(wt.Path) {
-		t.Fatalf("worktree directory not created: %s", wt.Path)
-	}
-	if wt.Ports["api"] != 3000 || wt.Ports["db"] != 3001 {
-		t.Errorf("ports = %v, want api=3000 db=3001", wt.Ports)
-	}
+	require.NoError(t, err)
+	require.True(t, found, "registry should contain the worktree")
+	require.DirExists(t, wt.Path)
+	require.Equal(t, 3000, wt.Ports["api"])
+	require.Equal(t, 3001, wt.Ports["db"])
 
 	// new is idempotent — re-running reconciles the existing worktree.
 	out.Reset()
-	if err := doNew(ctx, "my-feature", "", "", &out); err != nil {
-		t.Fatalf("doNew (repeat): %v", err)
-	}
-	if !strings.Contains(out.String(), "Reconciling") {
-		t.Errorf("repeat doNew should reconcile, got %q", out.String())
-	}
-	if again, _, _ := ctx.Store.Get("my-feature"); again.Ports["api"] != wt.Ports["api"] {
-		t.Errorf("reconcile must not change ports: %v vs %v", again.Ports, wt.Ports)
-	}
+	require.NoError(t, doNew(ctx, "my-feature", "", "", &out))
+	require.Contains(t, out.String(), "Reconciling")
+	again, _, _ := ctx.Store.Get("my-feature")
+	require.Equal(t, wt.Ports, again.Ports, "reconcile must not change ports")
 
 	// A second worktree gets a distinct port set.
-	if err := doNew(ctx, "other", "", "", &strings.Builder{}); err != nil {
-		t.Fatalf("doNew other: %v", err)
-	}
+	require.NoError(t, doNew(ctx, "other", "", "", &strings.Builder{}))
 	other, _, _ := ctx.Store.Get("other")
-	if other.Ports["api"] == wt.Ports["api"] {
-		t.Errorf("second worktree reused port %d", other.Ports["api"])
-	}
+	require.NotEqual(t, wt.Ports["api"], other.Ports["api"], "second worktree should not reuse a port")
 
 	out.Reset()
-	if err := doLs(ctx, &out); err != nil {
-		t.Fatalf("doLs: %v", err)
-	}
-	if !strings.Contains(out.String(), "my-feature") || !strings.Contains(out.String(), "other") {
-		t.Errorf("doLs output missing worktrees:\n%s", out.String())
-	}
+	require.NoError(t, doLs(ctx, &out))
+	require.Contains(t, out.String(), "my-feature")
+	require.Contains(t, out.String(), "other")
 
 	out.Reset()
-	if err := doStatus(ctx, "my-feature", &out); err != nil {
-		t.Fatalf("doStatus: %v", err)
-	}
-	if !strings.Contains(out.String(), "my-feature") {
-		t.Errorf("doStatus output:\n%s", out.String())
-	}
+	require.NoError(t, doStatus(ctx, "my-feature", &out))
+	require.Contains(t, out.String(), "my-feature")
 
 	// rm tears down and is idempotent.
-	if err := doRm(ctx, "my-feature", true, &strings.Builder{}); err != nil {
-		t.Fatalf("doRm: %v", err)
-	}
-	if _, found, _ := ctx.Store.Get("my-feature"); found {
-		t.Error("registry should not contain removed worktree")
-	}
-	if dirExists(wt.Path) {
-		t.Error("worktree directory should be gone after rm")
-	}
+	require.NoError(t, doRm(ctx, "my-feature", true, &strings.Builder{}))
+	_, found, _ = ctx.Store.Get("my-feature")
+	require.False(t, found, "registry should not contain the removed worktree")
+	require.NoDirExists(t, wt.Path)
+
 	out.Reset()
-	if err := doRm(ctx, "my-feature", true, &out); err != nil {
-		t.Fatalf("doRm (repeat): %v", err)
-	}
-	if !strings.Contains(out.String(), "Nothing to remove") {
-		t.Errorf("repeat doRm should be a no-op, got %q", out.String())
-	}
+	require.NoError(t, doRm(ctx, "my-feature", true, &out))
+	require.Contains(t, out.String(), "Nothing to remove", "repeat rm should be a no-op")
 }
 
 func TestStatusUnknownWorktree(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
-	if err := doStatus(ctx, "nope", &strings.Builder{}); err == nil {
-		t.Error("status of unknown worktree should error")
-	}
+	ctx := testContext(t)
+	require.Error(t, doStatus(ctx, "nope", &strings.Builder{}), "status of an unknown worktree should fail")
 }
 
 func TestNewWithAgent(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
+	ctx := testContext(t)
 	var out strings.Builder
 	// The "noop" exec agent runs `true`; with the none multiplexer it runs in
 	// the foreground and exits cleanly.
-	if err := doNew(ctx, "agented", "", "noop", &out); err != nil {
-		t.Fatalf("doNew --agent: %v", err)
-	}
-	if !strings.Contains(out.String(), "Launched agent") {
-		t.Errorf("expected agent launch in output:\n%s", out.String())
-	}
+	require.NoError(t, doNew(ctx, "agented", "", "noop", &out))
+	require.Contains(t, out.String(), "Launched agent")
+
 	rec, _, _ := ctx.Store.Get("agented")
-	if rec.Status != "working" {
-		t.Errorf("status = %q, want working", rec.Status)
-	}
+	require.Equal(t, state.StatusWorking, rec.Status)
 }
 
 func TestNewWithUnknownAgent(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
-	if err := doNew(ctx, "x", "", "ghost", &strings.Builder{}); err == nil {
-		t.Error("doNew with an unknown agent should error")
-	}
+	ctx := testContext(t)
+	require.Error(t, doNew(ctx, "x", "", "ghost", &strings.Builder{}),
+		"doNew with an unknown agent should fail")
 }
 
 func TestNewStartsDevServer(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
+	ctx := testContext(t)
 	var out strings.Builder
-	if err := doNew(ctx, "feat", "", "", &out); err != nil {
-		t.Fatalf("doNew: %v", err)
-	}
+	require.NoError(t, doNew(ctx, "feat", "", "", &out))
+
 	// With the none multiplexer croft can't host the dev server, so it prints
 	// the command — with {port} substituted to the primary service's port.
-	got := out.String()
-	if !strings.Contains(got, "dev server") {
-		t.Errorf("expected dev server notice in output:\n%s", got)
-	}
-	if !strings.Contains(got, "echo serving on 3000") {
-		t.Errorf("{port} should be substituted to the api port (3000):\n%s", got)
-	}
+	require.Contains(t, out.String(), "dev server")
+	require.Contains(t, out.String(), "echo serving on 3000", "{port} should be substituted")
 }
 
 func TestDevCommandSubstitution(t *testing.T) {
@@ -224,221 +163,122 @@ func TestDevCommandSubstitution(t *testing.T) {
 		Ports:    config.PortsSection{Services: []string{"api", "db"}},
 	}}
 	rec := state.Worktree{Ports: map[string]int{"api": 5000, "db": 5001}}
-	if got := ctx.devCommand(rec); got != "run --port 5000" {
-		t.Errorf("devCommand = %q, want 'run --port 5000'", got)
-	}
-
-	noDev := &appContext{}
-	if got := noDev.devCommand(rec); got != "" {
-		t.Errorf("devCommand with no dev_command = %q, want empty", got)
-	}
+	require.Equal(t, "run --port 5000", ctx.devCommand(rec))
+	require.Empty(t, (&appContext{}).devCommand(rec), "no dev_command yields empty")
 }
 
 func TestLiveStatusDerivation(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
-	if err := doNew(ctx, "feat", "", "", &strings.Builder{}); err != nil {
-		t.Fatalf("doNew: %v", err)
-	}
+	ctx := testContext(t)
+	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
 	rec, _, _ := ctx.Store.Get("feat")
 
-	if got := ctx.liveStatus(rec); got != "-" {
-		t.Errorf("no agent: liveStatus = %q, want -", got)
-	}
+	require.Equal(t, "-", ctx.liveStatus(rec), "no agent")
 
 	session := provider.ProjectName(ctx.providerWorktree(rec))
 	rec.Status = state.StatusWorking
 
 	// Agent window present -> working.
 	ctx.Providers.Multiplexer = fakeMux{managed: true, windows: map[string]bool{session + ":agent": true}}
-	if got := ctx.liveStatus(rec); got != "working" {
-		t.Errorf("agent window present: liveStatus = %q, want working", got)
-	}
+	require.Equal(t, state.StatusWorking, ctx.liveStatus(rec), "agent window present")
 
 	// Agent window gone -> done.
 	ctx.Providers.Multiplexer = fakeMux{managed: true, windows: map[string]bool{}}
-	if got := ctx.liveStatus(rec); got != "done" {
-		t.Errorf("agent window gone: liveStatus = %q, want done", got)
-	}
+	require.Equal(t, state.StatusDone, ctx.liveStatus(rec), "agent window gone")
 
 	// A rebase in progress overrides everything.
 	gd, err := ctx.Manager.GitDir(rec.Path)
-	if err != nil {
-		t.Fatalf("GitDir: %v", err)
-	}
-	if err := os.MkdirAll(filepath.Join(gd, "rebase-merge"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if got := ctx.liveStatus(rec); got != "rebase" {
-		t.Errorf("mid-rebase: liveStatus = %q, want rebase", got)
-	}
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Join(gd, "rebase-merge"), 0o755))
+	require.Equal(t, state.StatusRebase, ctx.liveStatus(rec), "mid-rebase overrides")
 }
 
 func TestSyncNoStacker(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
-	if err := doNew(ctx, "feat", "", "", &strings.Builder{}); err != nil {
-		t.Fatalf("doNew: %v", err)
-	}
+	ctx := testContext(t)
+	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
+
 	var out strings.Builder
-	if err := doSync(ctx, "", false, &out); err != nil {
-		t.Fatalf("doSync: %v", err)
-	}
-	if !strings.Contains(out.String(), "feat") || !strings.Contains(out.String(), "synced") {
-		t.Errorf("sync output:\n%s", out.String())
-	}
+	require.NoError(t, doSync(ctx, "", false, &out))
+	require.Contains(t, out.String(), "feat")
+	require.Contains(t, out.String(), "synced")
 }
 
 func TestSyncRefusesMidRebase(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
-	if err := doNew(ctx, "feat", "", "", &strings.Builder{}); err != nil {
-		t.Fatalf("doNew: %v", err)
-	}
+	ctx := testContext(t)
+	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
+
 	rec, _, _ := ctx.Store.Get("feat")
 	gd, err := ctx.Manager.GitDir(rec.Path)
-	if err != nil {
-		t.Fatalf("GitDir: %v", err)
-	}
-	if err := os.MkdirAll(filepath.Join(gd, "rebase-merge"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Join(gd, "rebase-merge"), 0o755))
+
 	var out strings.Builder
-	if err := doSync(ctx, "feat", false, &out); err == nil {
-		t.Error("doSync should fail when a worktree is mid-rebase")
-	}
-	if !strings.Contains(out.String(), "mid-rebase") {
-		t.Errorf("sync output should mention mid-rebase:\n%s", out.String())
-	}
+	require.Error(t, doSync(ctx, "feat", false, &out), "sync should fail mid-rebase")
+	require.Contains(t, out.String(), "mid-rebase")
 }
 
 func TestDoctorClean(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
+	ctx := testContext(t)
 	var out strings.Builder
-	if err := doDoctor(ctx, false, &out); err != nil {
-		t.Fatalf("doDoctor: %v", err)
-	}
-	if !strings.Contains(out.String(), "All clear") {
-		t.Errorf("clean repo should report all clear, got %q", out.String())
-	}
+	require.NoError(t, doDoctor(ctx, false, &out))
+	require.Contains(t, out.String(), "All clear")
 }
 
 func TestDoctorStaleRegistry(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
-	if err := doNew(ctx, "feat", "", "", &strings.Builder{}); err != nil {
-		t.Fatalf("doNew: %v", err)
-	}
+	ctx := testContext(t)
+	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
+
 	rec, _, _ := ctx.Store.Get("feat")
 	// Simulate the worktree directory vanishing out from under croft.
-	if err := os.RemoveAll(rec.Path); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.RemoveAll(rec.Path))
 
 	var out strings.Builder
-	if err := doDoctor(ctx, false, &out); err != nil {
-		t.Fatalf("doDoctor report: %v", err)
-	}
-	if !strings.Contains(out.String(), "issue") {
-		t.Errorf("doctor should detect the stale entry, got %q", out.String())
-	}
+	require.NoError(t, doDoctor(ctx, false, &out))
+	require.Contains(t, out.String(), "issue", "doctor should detect the stale entry")
 
-	if err := doDoctor(ctx, true, &strings.Builder{}); err != nil {
-		t.Fatalf("doDoctor --fix: %v", err)
-	}
-	if _, found, _ := ctx.Store.Get("feat"); found {
-		t.Error("stale registry entry should be gone after doctor --fix")
-	}
+	require.NoError(t, doDoctor(ctx, true, &strings.Builder{}))
+	_, found, _ := ctx.Store.Get("feat")
+	require.False(t, found, "stale registry entry should be gone after doctor --fix")
 }
 
 func TestDoctorOrphanDir(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
+	ctx := testContext(t)
 	// A directory matching the naming pattern but with no registry entry.
-	orphan := filepath.Join(ctx.WorktreeRoot, "demo.ghost")
-	if err := os.MkdirAll(orphan, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.MkdirAll(filepath.Join(ctx.WorktreeRoot, "demo.ghost"), 0o755))
+
 	var out strings.Builder
-	if err := doDoctor(ctx, false, &out); err != nil {
-		t.Fatalf("doDoctor: %v", err)
-	}
-	if !strings.Contains(out.String(), "orphan") {
-		t.Errorf("doctor should detect the orphan directory, got %q", out.String())
-	}
+	require.NoError(t, doDoctor(ctx, false, &out))
+	require.Contains(t, out.String(), "orphan", "doctor should detect the orphan directory")
 }
 
 func TestSpawnAndFleet(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
+	ctx := testContext(t)
 
 	var out strings.Builder
-	if err := doSpawn(ctx, "worker", "noop", "reviewer", repo, &out); err != nil {
-		t.Fatalf("doSpawn: %v", err)
-	}
-	if !strings.Contains(out.String(), "Spawned peer") {
-		t.Errorf("spawn output: %q", out.String())
-	}
+	require.NoError(t, doSpawn(ctx, "worker", "noop", "reviewer", ctx.RepoRoot, &out))
+	require.Contains(t, out.String(), "Spawned peer")
 
 	out.Reset()
-	if err := doFleetStatus(ctx, &out); err != nil {
-		t.Fatalf("doFleetStatus: %v", err)
-	}
-	if !strings.Contains(out.String(), "worker") {
-		t.Errorf("fleet status missing peer:\n%s", out.String())
-	}
+	require.NoError(t, doFleetStatus(ctx, &out))
+	require.Contains(t, out.String(), "worker", "fleet status should list the peer")
 
 	out.Reset()
-	if err := doFleetMsg(ctx, "worker", "ship it", &out); err != nil {
-		t.Fatalf("doFleetMsg: %v", err)
-	}
-	if !strings.Contains(out.String(), "Delivered") {
-		t.Errorf("fleet msg output: %q", out.String())
-	}
-	if err := doFleetMsg(ctx, "ghost", "hello", &strings.Builder{}); err == nil {
-		t.Error("dispatch to an unknown peer should error")
-	}
+	require.NoError(t, doFleetMsg(ctx, "worker", "ship it", &out))
+	require.Contains(t, out.String(), "Delivered")
+
+	require.Error(t, doFleetMsg(ctx, "ghost", "hello", &strings.Builder{}),
+		"dispatch to an unknown peer should fail")
 }
 
 func TestSpawnRequiresAgent(t *testing.T) {
-	repo := setupRepo(t)
-	ctx, err := loadContext(repo)
-	if err != nil {
-		t.Fatalf("loadContext: %v", err)
-	}
-	if err := doSpawn(ctx, "worker", "", "", repo, &strings.Builder{}); err == nil {
-		t.Error("spawn without --agent should error")
-	}
+	ctx := testContext(t)
+	require.Error(t, doSpawn(ctx, "worker", "", "", ctx.RepoRoot, &strings.Builder{}),
+		"spawn without --agent should fail")
 }
 
 func TestLoadContextWithoutConfig(t *testing.T) {
 	dir := t.TempDir()
-	if out, err := exec.Command("git", "-C", dir, "init").CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v\n%s", err, out)
-	}
-	if _, err := loadContext(dir); err == nil {
-		t.Error("loadContext without croft.toml should error")
-	}
+	out, err := exec.Command("git", "-C", dir, "init").CombinedOutput()
+	require.NoError(t, err, "git init\n%s", out)
+	_, err = loadContext(dir)
+	require.Error(t, err, "loadContext without croft.toml should fail")
 }

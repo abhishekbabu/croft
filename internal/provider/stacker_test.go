@@ -1,10 +1,10 @@
 package provider
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseStackBranches(t *testing.T) {
@@ -16,11 +16,7 @@ func TestParseStackBranches(t *testing.T) {
 		"◉ roa-1-base\n" +
 		"│\n" +
 		"◯ main\n"
-	got := parseStackBranches(out)
-	want := []string{"roa-3-top", "roa-2-mid", "roa-1-base"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("parseStackBranches = %v, want %v", got, want)
-	}
+	require.Equal(t, []string{"roa-3-top", "roa-2-mid", "roa-1-base"}, parseStackBranches(out))
 }
 
 func TestParsePRStates(t *testing.T) {
@@ -29,27 +25,18 @@ func TestParsePRStates(t *testing.T) {
 		{"headRefName":"roa-2-mid","state":"OPEN"}
 	]`)
 	got := parsePRStates(data)
-	if got["roa-1-base"] != "MERGED" || got["roa-2-mid"] != "OPEN" {
-		t.Errorf("parsePRStates = %v", got)
-	}
-	if len(parsePRStates([]byte("not json"))) != 0 {
-		t.Error("invalid JSON should yield an empty map")
-	}
+	require.Equal(t, "MERGED", got["roa-1-base"])
+	require.Equal(t, "OPEN", got["roa-2-mid"])
+	require.Empty(t, parsePRStates([]byte("not json")), "invalid JSON should yield an empty map")
 }
 
 func TestNewSelectsStackerAndRouter(t *testing.T) {
 	set, err := New(config.ProvidersSection{
-		Router:       "portless",
-		Stacker:      "graphite",
-		Coordination: "basic",
+		Router:       config.RouterPortless,
+		Stacker:      config.StackerGraphite,
+		Coordination: config.CoordinationBasic,
 	}, config.MachineConfig{}, "")
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	if _, ok := set.Router.(*PortlessRouter); !ok {
-		t.Errorf("router = %T, want *PortlessRouter", set.Router)
-	}
-	if _, ok := set.Stacker.(*GraphiteStacker); !ok {
-		t.Errorf("stacker = %T, want *GraphiteStacker", set.Stacker)
-	}
+	require.NoError(t, err)
+	require.IsType(t, &PortlessRouter{}, set.Router)
+	require.IsType(t, &GraphiteStacker{}, set.Stacker)
 }

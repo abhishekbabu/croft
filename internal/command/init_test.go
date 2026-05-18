@@ -8,52 +8,43 @@ import (
 	"testing"
 
 	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/stretchr/testify/require"
 )
 
 // newTestRepo creates an initialized git repo in a temp dir and returns it.
 func newTestRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if out, err := exec.Command("git", "-C", dir, "init").CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v\n%s", err, out)
-	}
+	out, err := exec.Command("git", "-C", dir, "init").CombinedOutput()
+	require.NoError(t, err, "git init\n%s", out)
 	return dir
 }
 
 func TestInitYesCreatesValidConfig(t *testing.T) {
 	dir := newTestRepo(t)
 	var out strings.Builder
-	if err := doInit(dir, false, true, strings.NewReader(""), &out); err != nil {
-		t.Fatalf("doInit: %v", err)
-	}
+	require.NoError(t, doInit(dir, false, true, strings.NewReader(""), &out))
+
 	data, err := os.ReadFile(filepath.Join(dir, config.ProjectFileName))
-	if err != nil {
-		t.Fatalf("read scaffolded config: %v", err)
-	}
-	if _, err := config.DecodeProject(data); err != nil {
-		t.Fatalf("scaffolded config is invalid: %v", err)
-	}
+	require.NoError(t, err)
+	_, err = config.DecodeProject(data)
+	require.NoError(t, err, "scaffolded config should be valid")
 }
 
 func TestInitRefusesExisting(t *testing.T) {
 	dir := newTestRepo(t)
 	var out strings.Builder
-	if err := doInit(dir, false, true, strings.NewReader(""), &out); err != nil {
-		t.Fatalf("first init: %v", err)
-	}
-	if err := doInit(dir, false, true, strings.NewReader(""), &out); err == nil {
-		t.Fatal("second init without --force should fail")
-	}
-	if err := doInit(dir, true, true, strings.NewReader(""), &out); err != nil {
-		t.Fatalf("init --force should overwrite: %v", err)
-	}
+	require.NoError(t, doInit(dir, false, true, strings.NewReader(""), &out))
+	require.Error(t, doInit(dir, false, true, strings.NewReader(""), &out),
+		"second init without --force should fail")
+	require.NoError(t, doInit(dir, true, true, strings.NewReader(""), &out),
+		"init --force should overwrite")
 }
 
 func TestInitOutsideGitRepo(t *testing.T) {
 	var out strings.Builder
-	if err := doInit(t.TempDir(), false, true, strings.NewReader(""), &out); err == nil {
-		t.Fatal("init outside a git repo should fail")
-	}
+	require.Error(t, doInit(t.TempDir(), false, true, strings.NewReader(""), &out),
+		"init outside a git repo should fail")
 }
 
 func TestInitInteractiveAnswers(t *testing.T) {
@@ -61,23 +52,13 @@ func TestInitInteractiveAnswers(t *testing.T) {
 	var out strings.Builder
 	// name, worktree root, dev command, multiplexer, infra, router, stacker.
 	answers := "myproj\n../trees\njust dev\ntmux\ndocker-compose\nnone\nnone\n"
-	if err := doInit(dir, false, false, strings.NewReader(answers), &out); err != nil {
-		t.Fatalf("doInit interactive: %v", err)
-	}
+	require.NoError(t, doInit(dir, false, false, strings.NewReader(answers), &out))
+
 	p, err := config.LoadProject(filepath.Join(dir, config.ProjectFileName))
-	if err != nil {
-		t.Fatalf("load: %v", err)
-	}
-	if p.Project.Name != "myproj" {
-		t.Errorf("name = %q, want myproj", p.Project.Name)
-	}
-	if p.Worktree.Naming != "myproj.{slug}" {
-		t.Errorf("naming = %q, want myproj.{slug}", p.Worktree.Naming)
-	}
-	if p.Worktree.DevCommand != "just dev" {
-		t.Errorf("dev_command = %q, want 'just dev'", p.Worktree.DevCommand)
-	}
-	if p.Providers.Multiplexer != "tmux" || p.Providers.Infra != "docker-compose" {
-		t.Errorf("providers = %+v", p.Providers)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "myproj", p.Project.Name)
+	require.Equal(t, "myproj.{slug}", p.Worktree.Naming)
+	require.Equal(t, "just dev", p.Worktree.DevCommand)
+	require.Equal(t, config.MultiplexerTmux, p.Providers.Multiplexer)
+	require.Equal(t, config.InfraDockerCompose, p.Providers.Infra)
 }
