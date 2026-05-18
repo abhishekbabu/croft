@@ -56,3 +56,14 @@ func InitGitRepo(t testing.TB, dir string) {
 	git(t, dir, "add", "-A")
 	git(t, dir, "commit", "-m", "init")
 }
+
+// FakeBin writes an executable /bin/sh script named name into a fresh temp dir
+// and returns its full path. It is a stand-in for an external tool, so code
+// that shells out can be exercised deterministically without the real tool
+// installed. script is the body placed after the shebang.
+func FakeBin(t testing.TB, name, script string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	require.NoError(t, os.WriteFile(path, []byte("#!/bin/sh\n"+script+"\n"), 0o755))
+	return path
+}
