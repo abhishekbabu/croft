@@ -12,6 +12,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// maxStatusWorkers caps how many worktree status probes run at once. The work
+// is I/O-bound shell-outs, so a modest fixed cap keeps a large registry from
+// launching a process stampede without throttling normal use.
+const maxStatusWorkers = 8
+
 // NewLsCmd builds the `croft ls` command, which lists croft-managed worktrees.
 func NewLsCmd() *cobra.Command {
 	return &cobra.Command{
@@ -50,13 +55,18 @@ func doLs(ctx *appContext, out io.Writer) error {
 	sort.Strings(slugs)
 
 	// liveStatus shells out per worktree (rebase check, agent-window probe);
-	// compute them concurrently so `ls` cost is one round-trip, not N.
+	// compute them concurrently so `ls` cost is one round-trip, not N. The
+	// semaphore caps concurrency so a registry with many worktrees cannot
+	// spawn an unbounded burst of git/tmux processes.
 	statuses := make([]string, len(slugs))
+	sem := make(chan struct{}, maxStatusWorkers)
 	var wg sync.WaitGroup
 	for i, slug := range slugs {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(i int, wt state.Worktree) {
 			defer wg.Done()
+			defer func() { <-sem }()
 			statuses[i] = ctx.liveStatus(wt)
 		}(i, reg.Worktrees[slug])
 	}
