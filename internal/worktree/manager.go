@@ -67,9 +67,9 @@ func (m *Manager) InRebase(path string) bool {
 	return false
 }
 
-// IsDirty reports whether the worktree at path has uncommitted changes in the
+// isDirty reports whether the worktree at path has uncommitted changes in the
 // working tree or the index.
-func (m *Manager) IsDirty(path string) bool {
+func (m *Manager) isDirty(path string) bool {
 	_, worktreeErr := sh.Capture("git", path, nil, "diff", "--quiet")
 	_, indexErr := sh.Capture("git", path, nil, "diff", "--cached", "--quiet")
 	return worktreeErr != nil || indexErr != nil
@@ -78,7 +78,7 @@ func (m *Manager) IsDirty(path string) bool {
 // Stash saves uncommitted changes (including untracked files) and reports
 // whether anything was stashed.
 func (m *Manager) Stash(path, msg string) (bool, error) {
-	if !m.IsDirty(path) {
+	if !m.isDirty(path) {
 		return false, nil
 	}
 	if _, err := gitAt(path, "stash", "push", "-m", msg, "--include-untracked"); err != nil {
@@ -93,8 +93,8 @@ func (m *Manager) StashPop(path string) error {
 	return err
 }
 
-// BranchExists reports whether branch is a known local branch.
-func (m *Manager) BranchExists(branch string) bool {
+// branchExists reports whether branch is a known local branch.
+func (m *Manager) branchExists(branch string) bool {
 	_, err := m.git("rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
 	return err == nil
 }
@@ -103,7 +103,7 @@ func (m *Manager) BranchExists(branch string) bool {
 // a new branch is created from startPoint (HEAD when startPoint is empty).
 func (m *Manager) Add(path, branch, startPoint string) error {
 	args := []string{"worktree", "add"}
-	if m.BranchExists(branch) {
+	if m.branchExists(branch) {
 		args = append(args, path, branch)
 	} else {
 		args = append(args, "-b", branch, path)

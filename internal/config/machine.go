@@ -10,8 +10,8 @@ import (
 	"github.com/abhishekbabu/croft/internal/env"
 )
 
-// MachineFileName is the per-machine config file name.
-const MachineFileName = "config.toml"
+// machineFileName is the per-machine config file name.
+const machineFileName = "config.toml"
 
 // MachineConfig is the per-machine, gitignored config — everything that would
 // otherwise be hardcoded to one developer's setup (binary paths, AWS profile,
@@ -33,29 +33,29 @@ type AWSSection struct {
 	SSOProfile string `toml:"sso_profile"`
 }
 
-// MachineConfigPath returns the path to the per-machine config file, honoring
+// machineConfigPath returns the path to the per-machine config file, honoring
 // XDG_CONFIG_HOME and falling back to ~/.config.
-func MachineConfigPath() (string, error) {
+func machineConfigPath() (string, error) {
 	dir, err := env.ConfigHome()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "croft", MachineFileName), nil
+	return filepath.Join(dir, "croft", machineFileName), nil
 }
 
 // LoadMachine reads the per-machine config. The file is optional: if it does
 // not exist, a zero-value config is returned with no error.
 func LoadMachine() (MachineConfig, error) {
-	path, err := MachineConfigPath()
+	path, err := machineConfigPath()
 	if err != nil {
 		return MachineConfig{}, err
 	}
-	return LoadMachineFrom(path)
+	return loadMachineFrom(path)
 }
 
-// LoadMachineFrom reads the per-machine config from an explicit path. A missing
+// loadMachineFrom reads the per-machine config from an explicit path. A missing
 // file is not an error.
-func LoadMachineFrom(path string) (MachineConfig, error) {
+func loadMachineFrom(path string) (MachineConfig, error) {
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return MachineConfig{}, nil

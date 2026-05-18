@@ -22,7 +22,7 @@ func TestSlugify(t *testing.T) {
 func TestDirNameSlugRoundTrip(t *testing.T) {
 	const pattern = "demo.{slug}"
 	for _, slug := range []string{"foo", "roa-1234-bar", "x"} {
-		dir := DirName(slug, pattern)
+		dir := dirName(slug, pattern)
 		got, ok := SlugFromDir(dir, pattern)
 		require.True(t, ok, "SlugFromDir(%q) should match the pattern", dir)
 		require.Equal(t, slug, got, "round trip via dir %q", dir)

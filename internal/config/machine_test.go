@@ -9,7 +9,7 @@ import (
 )
 
 func TestLoadMachineMissingFile(t *testing.T) {
-	m, err := LoadMachineFrom(filepath.Join(t.TempDir(), "absent.toml"))
+	m, err := loadMachineFrom(filepath.Join(t.TempDir(), "absent.toml"))
 	require.NoError(t, err, "missing machine config should not error")
 	require.Empty(t, m.Bins)
 	require.Empty(t, m.Defaults.Agent)
@@ -17,7 +17,7 @@ func TestLoadMachineMissingFile(t *testing.T) {
 
 func TestLoadMachineFrom(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, MachineFileName)
+	path := filepath.Join(dir, machineFileName)
 	src := `
 [bins]
 claude = "/opt/homebrew/bin/claude"
@@ -31,7 +31,7 @@ sso_profile = "demo-dev"
 `
 	require.NoError(t, os.WriteFile(path, []byte(src), 0o644))
 
-	m, err := LoadMachineFrom(path)
+	m, err := loadMachineFrom(path)
 	require.NoError(t, err)
 	require.Equal(t, "/opt/homebrew/bin/claude", m.Bin("claude"))
 	require.Equal(t, "codex", m.Bin("codex"), "unset bin should fall back to the tool name")
@@ -43,9 +43,9 @@ func TestLoadMachineViaXDG(t *testing.T) {
 	cfgHome := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", cfgHome)
 
-	path, err := MachineConfigPath()
+	path, err := machineConfigPath()
 	require.NoError(t, err)
-	require.Equal(t, filepath.Join(cfgHome, "croft", MachineFileName), path)
+	require.Equal(t, filepath.Join(cfgHome, "croft", machineFileName), path)
 
 	// No file there yet: LoadMachine returns a zero config without error.
 	m, err := LoadMachine()

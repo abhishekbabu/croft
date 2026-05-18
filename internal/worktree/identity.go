@@ -27,9 +27,9 @@ func Slugify(branch string) string {
 	return strings.Trim(s, "-._")
 }
 
-// DirName renders a worktree directory name from a slug and a naming pattern.
+// dirName renders a worktree directory name from a slug and a naming pattern.
 // The pattern must contain the {slug} placeholder.
-func DirName(slug, pattern string) string {
+func dirName(slug, pattern string) string {
 	return strings.Replace(pattern, "{slug}", slug, 1)
 }
 
@@ -53,7 +53,7 @@ func SlugFromDir(dir, pattern string) (slug string, ok bool) {
 // Resolve builds an Identity for a slug given the (absolute) worktree root and
 // the naming pattern.
 func Resolve(slug, worktreeRoot, pattern string) Identity {
-	dir := DirName(slug, pattern)
+	dir := dirName(slug, pattern)
 	return Identity{
 		Slug: slug,
 		Dir:  dir,

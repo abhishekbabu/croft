@@ -57,12 +57,12 @@ func Open(project string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return OpenAt(filepath.Join(base, "croft", project))
+	return openAt(filepath.Join(base, "croft", project))
 }
 
-// OpenAt returns a Store rooted at an explicit directory, creating it if
+// openAt returns a Store rooted at an explicit directory, creating it if
 // necessary. Used directly in tests.
-func OpenAt(dir string) (*Store, error) {
+func openAt(dir string) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("create state dir %s: %w", dir, err)
 	}

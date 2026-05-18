@@ -30,9 +30,9 @@ func TestManagerAddListRemove(t *testing.T) {
 	mgr := NewManager(repo)
 	wtPath := filepath.Join(t.TempDir(), "demo.feat")
 
-	require.False(t, mgr.BranchExists("feat"), "feat branch should not exist yet")
+	require.False(t, mgr.branchExists("feat"), "feat branch should not exist yet")
 	require.NoError(t, mgr.Add(wtPath, "feat", ""))
-	require.True(t, mgr.BranchExists("feat"), "feat branch should exist after Add")
+	require.True(t, mgr.branchExists("feat"), "feat branch should exist after Add")
 	require.DirExists(t, wtPath)
 
 	list, err := mgr.List()
@@ -54,21 +54,21 @@ func TestDirtyAndStash(t *testing.T) {
 	repo := testutil.GitRepo(t)
 	mgr := NewManager(repo)
 
-	require.False(t, mgr.IsDirty(repo), "fresh repo should be clean")
+	require.False(t, mgr.isDirty(repo), "fresh repo should be clean")
 	stashed, err := mgr.Stash(repo, "test")
 	require.NoError(t, err)
 	require.False(t, stashed, "nothing to stash in a clean tree")
 
 	require.NoError(t, os.WriteFile(filepath.Join(repo, "f"), []byte("changed"), 0o644))
-	require.True(t, mgr.IsDirty(repo), "repo should be dirty after edit")
+	require.True(t, mgr.isDirty(repo), "repo should be dirty after edit")
 
 	stashed, err = mgr.Stash(repo, "test")
 	require.NoError(t, err)
 	require.True(t, stashed, "dirty tree should be stashed")
-	require.False(t, mgr.IsDirty(repo), "repo should be clean after stash")
+	require.False(t, mgr.isDirty(repo), "repo should be clean after stash")
 
 	require.NoError(t, mgr.StashPop(repo))
-	require.True(t, mgr.IsDirty(repo), "changes should be restored after StashPop")
+	require.True(t, mgr.isDirty(repo), "changes should be restored after StashPop")
 }
 
 func TestInRebase(t *testing.T) {

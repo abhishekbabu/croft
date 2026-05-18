@@ -23,8 +23,8 @@ func TestOpenUsesXDGDataHome(t *testing.T) {
 
 func newStore(t *testing.T) *Store {
 	t.Helper()
-	s, err := OpenAt(t.TempDir())
-	require.NoError(t, err, "OpenAt")
+	s, err := openAt(t.TempDir())
+	require.NoError(t, err, "openAt")
 	return s
 }
 
@@ -76,7 +76,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	require.Equal(t, "bb", out.Worktrees["b"].Branch)
 
 	// Reopening the same directory must see persisted state.
-	s2, err := OpenAt(s.Dir())
+	s2, err := openAt(s.Dir())
 	require.NoError(t, err)
 	r, err := s2.Load()
 	require.NoError(t, err)
