@@ -21,13 +21,15 @@ linters:
         - fmt.Fprintf
         - fmt.Fprintln
     gosec:
-      # G204 and G304 are structural to croft: its whole job is shelling out
-      # to other tools (internal/sh) and reading config/state files by path.
-      # Flagging every such call is pure noise; the remaining gosec rules
-      # (weak crypto, hardcoded creds, etc.) still apply.
+      # G204, G304, and G703 are structural to croft: its whole job is shelling
+      # out to other tools (internal/sh) and reading/writing files at paths
+      # taken from the project's own committed config. Flagging every such call
+      # is pure noise; the remaining gosec rules (weak crypto, hardcoded creds,
+      # etc.) still apply.
       excludes:
         - G204
         - G304
+        - G703
   exclusions:
     rules:
       # Test code and the testutil fixtures legitimately write 0755 helper

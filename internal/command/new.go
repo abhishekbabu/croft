@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/abhishekbabu/croft/internal/provider"
@@ -56,6 +57,7 @@ func doNew(ctx *appContext, branch, from, agentName string, out io.Writer) error
 			return err
 		}
 		fmt.Fprintf(out, "Created worktree %q (branch %s)\n", slug, branch)
+		seedCopyFiles(ctx.RepoRoot, rec.Path, ctx.Config.Worktree.CopyFiles, out)
 	} else {
 		fmt.Fprintf(out, "Reconciling worktree %q\n", slug)
 	}
@@ -171,4 +173,38 @@ func createWorktree(ctx *appContext, reg state.Registry, slug, branch, from stri
 		return state.Worktree{}, fmt.Errorf("record worktree (rolled back): %w", err)
 	}
 	return rec, nil
+}
+
+// seedCopyFiles copies each configured copy_files entry from the repo root
+// into a freshly created worktree, at the same relative path. The entries are
+// untracked developer files (an .env.local, a local override), so a missing
+// source is skipped silently; a genuine copy failure is reported but never
+// fails worktree creation.
+func seedCopyFiles(repoRoot, worktreePath string, files []string, out io.Writer) {
+	for _, rel := range files {
+		src := filepath.Join(repoRoot, rel)
+		info, err := os.Stat(src)
+		if err != nil {
+			continue // not present — expected for optional dev files
+		}
+		if err := copyFile(src, filepath.Join(worktreePath, rel), info.Mode()); err != nil {
+			fmt.Fprintf(out, "  warning: could not seed %s: %v\n", rel, err)
+			continue
+		}
+		fmt.Fprintf(out, "  seeded: %s\n", rel)
+	}
+}
+
+// copyFile copies src to dst, creating parent directories, keeping src's
+// permissions so a copied file stays exactly as the developer left it.
+func copyFile(src, dst string, perm os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
+		return err
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	// #nosec G306 -- a copied file keeps its source's permissions.
+	return os.WriteFile(dst, data, perm)
 }
