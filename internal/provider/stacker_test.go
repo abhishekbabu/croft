@@ -3,9 +3,16 @@ package provider
 import (
 	"testing"
 
-	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/abhishekbabu/croft/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNoneStackerIsInert(t *testing.T) {
+	wt := Worktree{Slug: "x", Path: "/tmp/x"}
+	ok, err := NoneStacker{}.AllResolved(wt)
+	require.NoError(t, err)
+	require.False(t, ok, "NoneStacker.AllResolved must be false")
+}
 
 func TestParseStackBranches(t *testing.T) {
 	// Mimics `gt log short -s` with ANSI codes and tree-drawing characters.
@@ -30,13 +37,24 @@ func TestParsePRStates(t *testing.T) {
 	require.Empty(t, parsePRStates([]byte("not json")), "invalid JSON should yield an empty map")
 }
 
-func TestNewSelectsStackerAndRouter(t *testing.T) {
-	set, err := New(config.ProvidersSection{
-		Router:       config.RouterPortless,
-		Stacker:      config.StackerGraphite,
-		Coordination: config.CoordinationBasic,
-	}, config.MachineConfig{}, "")
+// TestGraphiteStackerShellOut drives GraphiteStacker against a fake `gt` so the
+// shell-out and output-parsing paths run without Graphite installed.
+func TestGraphiteStackerShellOut(t *testing.T) {
+	gt := testutil.FakeBin(t, "gt", `
+case "$1" in
+  sync) echo "stack synced" ;;
+  log)  printf '%s\n' '◯ roa-2-top' '│' '◉ roa-1-base' '│' '◯ main' ;;
+esac`)
+	g := NewGraphiteStacker(gt)
+	wt := Worktree{Path: t.TempDir()}
+
+	branches, err := g.StackBranches(wt)
 	require.NoError(t, err)
-	require.IsType(t, &PortlessRouter{}, set.Router)
-	require.IsType(t, &GraphiteStacker{}, set.Stacker)
+	require.Equal(t, []string{"roa-2-top", "roa-1-base"}, branches)
+
+	st, err := g.Sync(wt)
+	require.NoError(t, err)
+	require.True(t, st.Rebased)
+	require.Equal(t, "stack synced", st.Detail)
+	require.Equal(t, branches, st.Branches)
 }
