@@ -9,6 +9,10 @@ linters:
     - unused
     - misspell
     - revive
+    - errorlint
+    - unparam
+    - gocritic
+    - gosec
   settings:
     errcheck:
       # Writes to CLI output streams are intentionally fire-and-forget.
@@ -16,6 +20,25 @@ linters:
         - fmt.Fprint
         - fmt.Fprintf
         - fmt.Fprintln
+    gosec:
+      # G204 and G304 are structural to croft: its whole job is shelling out
+      # to other tools (internal/sh) and reading config/state files by path.
+      # Flagging every such call is pure noise; the remaining gosec rules
+      # (weak crypto, hardcoded creds, etc.) still apply.
+      excludes:
+        - G204
+        - G304
+  exclusions:
+    rules:
+      # Test code and the testutil fixtures legitimately write 0755 helper
+      # scripts and run git with assembled arguments — gosec's file-permission
+      # and subprocess rules add nothing there.
+      - path: _test\.go
+        linters:
+          - gosec
+      - path: internal/testutil/
+        linters:
+          - gosec
 
 formatters:
   enable:

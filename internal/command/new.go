@@ -136,6 +136,7 @@ func startDevServer(ctx *appContext, rec state.Worktree, env map[string]string, 
 // back).
 func createWorktree(ctx *appContext, reg state.Registry, slug, branch, from string, prev state.Worktree) (state.Worktree, error) {
 	id := worktree.Resolve(slug, ctx.WorktreeRoot, ctx.Config.Worktree.Naming)
+	// #nosec G301 -- the worktree root holds ordinary source checkouts.
 	if err := os.MkdirAll(ctx.WorktreeRoot, 0o755); err != nil {
 		return state.Worktree{}, fmt.Errorf("create worktree root: %w", err)
 	}

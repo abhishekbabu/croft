@@ -18,7 +18,7 @@ const lockFile = "registry.lock"
 // second Save would silently clobber the first's change. flock serializes the
 // whole cycle across processes.
 func (s *Store) withLock(fn func() error) error {
-	f, err := os.OpenFile(filepath.Join(s.dir, lockFile), os.O_CREATE|os.O_RDWR, 0o644)
+	f, err := os.OpenFile(filepath.Join(s.dir, lockFile), os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return fmt.Errorf("open registry lock: %w", err)
 	}

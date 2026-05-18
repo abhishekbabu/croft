@@ -58,6 +58,7 @@ func doInit(startDir string, force, yes bool, in io.Reader, out io.Writer) error
 	if _, err := config.DecodeProject([]byte(rendered)); err != nil {
 		return fmt.Errorf("generated config is invalid: %w", err)
 	}
+	// #nosec G306 -- croft.toml is project config, committed and world-readable.
 	if err := os.WriteFile(target, []byte(rendered), 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", target, err)
 	}

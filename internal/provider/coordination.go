@@ -73,7 +73,7 @@ func (c *BasicCoordination) Spawn(spec PeerSpec) (Peer, error) {
 	if strings.TrimSpace(spec.Name) == "" {
 		return Peer{}, errors.New("peer name is required")
 	}
-	if err := os.MkdirAll(c.dir, 0o755); err != nil {
+	if err := os.MkdirAll(c.dir, 0o700); err != nil {
 		return Peer{}, fmt.Errorf("create peer state dir: %w", err)
 	}
 	argv, env, err := c.launch(spec)
@@ -130,7 +130,7 @@ func (c *BasicCoordination) Dispatch(target Peer, msg string) error {
 		return fmt.Errorf("no such peer %q", target.Name)
 	}
 	mailbox := filepath.Join(c.dir, target.Name+".inbox")
-	f, err := os.OpenFile(mailbox, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	f, err := os.OpenFile(mailbox, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return fmt.Errorf("open mailbox: %w", err)
 	}
@@ -150,7 +150,7 @@ func (c *BasicCoordination) savePeer(rec peerRecord) error {
 	}
 	path := filepath.Join(c.dir, rec.Name+".json")
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return fmt.Errorf("write peer record: %w", err)
 	}
 	return os.Rename(tmp, path)

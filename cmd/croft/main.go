@@ -19,6 +19,12 @@ import (
 var version = "dev"
 
 func main() {
+	// os.Exit is isolated here so run's deferred cleanup (signal-stop) runs.
+	os.Exit(run())
+}
+
+// run executes the CLI and returns a process exit code.
+func run() int {
 	// Cancel on SIGINT/SIGTERM so Ctrl-C terminates in-flight child processes:
 	// every external command derives its context from sh's base context.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -27,8 +33,9 @@ func main() {
 
 	if err := newRootCmd().ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, "croft:", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // newRootCmd builds the root `croft` command. Subcommands are attached here as

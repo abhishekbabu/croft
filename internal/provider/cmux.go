@@ -297,10 +297,10 @@ func (c *CmuxMultiplexer) saveMap(m windowMap) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(c.stateDir, 0o755); err != nil {
+	if err := os.MkdirAll(c.stateDir, 0o700); err != nil {
 		return err
 	}
-	return os.WriteFile(c.mapPath(), data, 0o644)
+	return os.WriteFile(c.mapPath(), data, 0o600)
 }
 
 // trackWindow records that workspace name's window maps to surfaceID.
