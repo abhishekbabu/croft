@@ -71,6 +71,16 @@ func loadContext(startDir string) (*appContext, error) {
 	}, nil
 }
 
+// contextFromCwd loads the croft context for the current working directory.
+// It is the entry point every command's RunE uses.
+func contextFromCwd() (*appContext, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	return loadContext(cwd)
+}
+
 // providerWorktree adapts a registry record into the value providers operate
 // on.
 func (c *appContext) providerWorktree(wt state.Worktree) provider.Worktree {

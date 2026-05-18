@@ -3,7 +3,6 @@ package command
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/abhishekbabu/croft/internal/worktree"
 	"github.com/spf13/cobra"
@@ -17,11 +16,7 @@ func NewStatusCmd() *cobra.Command {
 		Short: "Show detail for one worktree",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			ctx, err := loadContext(cwd)
+			ctx, err := contextFromCwd()
 			if err != nil {
 				return err
 			}

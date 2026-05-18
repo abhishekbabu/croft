@@ -3,7 +3,6 @@ package command
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"text/tabwriter"
 
@@ -53,15 +52,6 @@ func fleetMsgCmd() *cobra.Command {
 			return doFleetMsg(ctx, args[0], strings.Join(args[1:], " "), cmd.OutOrStdout())
 		},
 	}
-}
-
-// contextFromCwd loads the croft context for the current directory.
-func contextFromCwd() (*appContext, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	return loadContext(cwd)
 }
 
 // doFleetStatus prints every coordinated peer as a table.

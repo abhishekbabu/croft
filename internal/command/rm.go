@@ -3,7 +3,6 @@ package command
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/abhishekbabu/croft/internal/provider"
 	"github.com/abhishekbabu/croft/internal/state"
@@ -20,11 +19,7 @@ func NewRmCmd() *cobra.Command {
 		Short: "Remove a worktree and tear down its environment",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			ctx, err := loadContext(cwd)
+			ctx, err := contextFromCwd()
 			if err != nil {
 				return err
 			}

@@ -3,7 +3,6 @@ package command
 import (
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"sync"
 	"text/tabwriter"
@@ -24,11 +23,7 @@ func NewLsCmd() *cobra.Command {
 		Short: "List croft-managed worktrees",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			ctx, err := loadContext(cwd)
+			ctx, err := contextFromCwd()
 			if err != nil {
 				return err
 			}

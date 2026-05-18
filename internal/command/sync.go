@@ -3,7 +3,6 @@ package command
 import (
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strings"
 
@@ -21,11 +20,7 @@ func NewSyncCmd() *cobra.Command {
 		Short: "Sync worktree branch stacks against the trunk",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			ctx, err := loadContext(cwd)
+			ctx, err := contextFromCwd()
 			if err != nil {
 				return err
 			}

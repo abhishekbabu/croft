@@ -21,11 +21,7 @@ func NewNewCmd() *cobra.Command {
 		Short: "Create an isolated environment for a branch",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			ctx, err := loadContext(cwd)
+			ctx, err := contextFromCwd()
 			if err != nil {
 				return err
 			}
