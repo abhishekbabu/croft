@@ -2,26 +2,17 @@ package command
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/abhishekbabu/croft/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-// newTestRepo creates an initialized git repo in a temp dir and returns it.
-func newTestRepo(t *testing.T) string {
-	t.Helper()
-	dir := t.TempDir()
-	out, err := exec.Command("git", "-C", dir, "init").CombinedOutput()
-	require.NoError(t, err, "git init\n%s", out)
-	return dir
-}
-
 func TestInitYesCreatesValidConfig(t *testing.T) {
-	dir := newTestRepo(t)
+	dir := testutil.EmptyGitRepo(t)
 	var out strings.Builder
 	require.NoError(t, doInit(dir, false, true, strings.NewReader(""), &out))
 
@@ -32,7 +23,7 @@ func TestInitYesCreatesValidConfig(t *testing.T) {
 }
 
 func TestInitRefusesExisting(t *testing.T) {
-	dir := newTestRepo(t)
+	dir := testutil.EmptyGitRepo(t)
 	var out strings.Builder
 	require.NoError(t, doInit(dir, false, true, strings.NewReader(""), &out))
 	require.Error(t, doInit(dir, false, true, strings.NewReader(""), &out),
@@ -48,7 +39,7 @@ func TestInitOutsideGitRepo(t *testing.T) {
 }
 
 func TestInitInteractiveAnswers(t *testing.T) {
-	dir := newTestRepo(t)
+	dir := testutil.EmptyGitRepo(t)
 	var out strings.Builder
 	// name, worktree root, dev command, multiplexer, infra, router, stacker.
 	answers := "myproj\n../trees\njust dev\ntmux\ndocker-compose\nnone\nnone\n"

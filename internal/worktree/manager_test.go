@@ -2,10 +2,10 @@ package worktree
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
+	"github.com/abhishekbabu/croft/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,28 +25,8 @@ func TestParseWorktreeList(t *testing.T) {
 	require.Empty(t, got[1].Branch)
 }
 
-// initRepo creates a git repo with one commit on the default branch.
-func initRepo(t *testing.T) string {
-	t.Helper()
-	dir := t.TempDir()
-	run := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
-		cmd.Env = append(os.Environ(),
-			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
-			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "git %v\n%s", args, out)
-	}
-	run("init")
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "f"), []byte("x"), 0o644))
-	run("add", "-A")
-	run("commit", "-m", "init")
-	return dir
-}
-
 func TestManagerAddListRemove(t *testing.T) {
-	repo := initRepo(t)
+	repo := testutil.GitRepo(t)
 	mgr := NewManager(repo)
 	wtPath := filepath.Join(t.TempDir(), "demo.feat")
 
@@ -71,7 +51,7 @@ func TestManagerAddListRemove(t *testing.T) {
 }
 
 func TestDirtyAndStash(t *testing.T) {
-	repo := initRepo(t)
+	repo := testutil.GitRepo(t)
 	mgr := NewManager(repo)
 
 	require.False(t, mgr.IsDirty(repo), "fresh repo should be clean")
@@ -92,7 +72,7 @@ func TestDirtyAndStash(t *testing.T) {
 }
 
 func TestInRebase(t *testing.T) {
-	repo := initRepo(t)
+	repo := testutil.GitRepo(t)
 	mgr := NewManager(repo)
 	require.False(t, mgr.InRebase(repo), "fresh repo should not be mid-rebase")
 

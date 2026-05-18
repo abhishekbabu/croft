@@ -2,7 +2,6 @@ package command
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"github.com/abhishekbabu/croft/internal/config"
 	"github.com/abhishekbabu/croft/internal/provider"
 	"github.com/abhishekbabu/croft/internal/state"
+	"github.com/abhishekbabu/croft/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,19 +36,7 @@ func setupRepo(t *testing.T) string {
 	tmp := t.TempDir()
 	repo := filepath.Join(tmp, "repo")
 	require.NoError(t, os.MkdirAll(repo, 0o755))
-	git := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
-		cmd.Env = append(os.Environ(),
-			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
-			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "git %v\n%s", args, out)
-	}
-	git("init")
-	require.NoError(t, os.WriteFile(filepath.Join(repo, "f"), []byte("x"), 0o644))
-	git("add", "-A")
-	git("commit", "-m", "init")
+	testutil.InitGitRepo(t, repo)
 
 	cfg := `
 [project]
@@ -276,9 +264,7 @@ func TestSpawnRequiresAgent(t *testing.T) {
 }
 
 func TestLoadContextWithoutConfig(t *testing.T) {
-	dir := t.TempDir()
-	out, err := exec.Command("git", "-C", dir, "init").CombinedOutput()
-	require.NoError(t, err, "git init\n%s", out)
-	_, err = loadContext(dir)
+	dir := testutil.EmptyGitRepo(t)
+	_, err := loadContext(dir)
 	require.Error(t, err, "loadContext without croft.toml should fail")
 }
