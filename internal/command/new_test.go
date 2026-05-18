@@ -72,3 +72,13 @@ func TestNewStartsDevServer(t *testing.T) {
 	require.Contains(t, out.String(), "dev server")
 	require.Contains(t, out.String(), "echo serving on 3000", "{port} should be substituted")
 }
+
+func TestNewStartsDevServerInSession(t *testing.T) {
+	ctx := testContext(t)
+	// A managed multiplexer hosts the dev server in a window.
+	ctx.Providers.Multiplexer = fakeMux{managed: true}
+
+	var out strings.Builder
+	require.NoError(t, doNew(ctx, "feat", "", "", &out))
+	require.Contains(t, out.String(), "dev server: started")
+}

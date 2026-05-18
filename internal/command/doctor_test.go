@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/abhishekbabu/croft/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,6 +32,18 @@ func TestDoctorStaleRegistry(t *testing.T) {
 	require.NoError(t, doDoctor(ctx, true, &strings.Builder{}))
 	_, found, _ := ctx.Store.Get("feat")
 	require.False(t, found, "stale registry entry should be gone after doctor --fix")
+}
+
+func TestDoctorLeakedContainers(t *testing.T) {
+	ctx := testContext(t)
+	// A compose project named for this project (demo-) with no matching
+	// worktree is a leaked stack.
+	docker := testutil.FakeBin(t, "docker", `echo '[{"Name":"demo-ghost"}]'`)
+	prependPATH(t, docker)
+
+	var out strings.Builder
+	require.NoError(t, doDoctor(ctx, false, &out))
+	require.Contains(t, out.String(), "leaked container stack")
 }
 
 func TestDoctorOrphanDir(t *testing.T) {

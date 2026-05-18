@@ -61,3 +61,10 @@ func testContext(t *testing.T) *appContext {
 	require.NoError(t, err, "loadContext")
 	return ctx
 }
+
+// prependPATH puts binPath's directory at the front of $PATH for the test, so
+// a hardcoded tool lookup (e.g. doctor resolving "docker") finds the fake.
+func prependPATH(t *testing.T, binPath string) {
+	t.Helper()
+	t.Setenv("PATH", filepath.Dir(binPath)+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
