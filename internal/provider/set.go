@@ -2,9 +2,9 @@ package provider
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/abhishekbabu/croft/internal/config"
+	"github.com/abhishekbabu/croft/internal/env"
 )
 
 // Set is the bundle of provider implementations selected by a project's
@@ -38,7 +38,7 @@ func New(p config.ProvidersSection, m config.MachineConfig, stateDir string) (Se
 	case config.MultiplexerCmux:
 		// cmux can only drive surfaces from inside a cmux terminal; fail fast
 		// here rather than partway through a command.
-		if os.Getenv("CMUX_SURFACE_ID") == "" {
+		if env.CmuxSurfaceID() == "" {
 			return Set{}, fmt.Errorf(`providers.multiplexer is %q but croft is not `+
 				`running inside a cmux terminal ($CMUX_SURFACE_ID is unset)`, config.MultiplexerCmux)
 		}

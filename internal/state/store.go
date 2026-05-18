@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/abhishekbabu/croft/internal/env"
 )
 
 // Agent-state markers a worktree can carry (PLAN.md §2.3). The status dashboard
@@ -48,13 +50,9 @@ const registryFile = "registry.json"
 // Open returns a Store for the named project under the XDG data directory
 // (XDG_DATA_HOME, or ~/.local/share).
 func Open(project string) (*Store, error) {
-	base := os.Getenv("XDG_DATA_HOME")
-	if base == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("locate home directory: %w", err)
-		}
-		base = filepath.Join(home, ".local", "share")
+	base, err := env.DataHome()
+	if err != nil {
+		return nil, err
 	}
 	return OpenAt(filepath.Join(base, "croft", project))
 }

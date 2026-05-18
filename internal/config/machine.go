@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/abhishekbabu/croft/internal/env"
 )
 
 // MachineFileName is the per-machine config file name.
@@ -34,13 +36,9 @@ type AWSSection struct {
 // MachineConfigPath returns the path to the per-machine config file, honoring
 // XDG_CONFIG_HOME and falling back to ~/.config.
 func MachineConfigPath() (string, error) {
-	dir := os.Getenv("XDG_CONFIG_HOME")
-	if dir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("locate home directory: %w", err)
-		}
-		dir = filepath.Join(home, ".config")
+	dir, err := env.ConfigHome()
+	if err != nil {
+		return "", err
 	}
 	return filepath.Join(dir, "croft", MachineFileName), nil
 }

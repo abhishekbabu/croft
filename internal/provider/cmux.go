@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/abhishekbabu/croft/internal/env"
 	"github.com/abhishekbabu/croft/internal/sh"
 )
 
@@ -40,7 +41,7 @@ func NewCmuxMultiplexer(bin, stateDir string) *CmuxMultiplexer {
 	}
 	return &CmuxMultiplexer{
 		bin:       bin,
-		surfaceID: os.Getenv("CMUX_SURFACE_ID"),
+		surfaceID: env.CmuxSurfaceID(),
 		stateDir:  stateDir,
 	}
 }
