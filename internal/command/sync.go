@@ -69,10 +69,14 @@ func doSync(ctx *appContext, branch string, prune bool, out io.Writer) error {
 		return nil
 	}
 
-	// Unlike ls/doctor, sync is deliberately sequential: every worktree of a
-	// repo shares one object database, and concurrent `git rebase`/`gt sync`
-	// runs would race on ref locks. It also keeps per-worktree progress output
-	// from interleaving.
+	// Unlike ls/doctor, sync is deliberately sequential. It auto-stashes each
+	// worktree, and refs/stash (with its stash stack) is shared across all
+	// worktrees of a repo — concurrent stash/pop would interleave entries, so
+	// one worktree's pop could restore another's changes. With the Graphite
+	// stacker it is worse: `gt sync` rebases the whole stack and trunk, not
+	// just the checked-out branch, contending on shared ref locks, and
+	// Graphite is not built for concurrent invocation on one repo. Sequential
+	// execution also keeps per-worktree progress output from interleaving.
 	var failures int
 	for _, rec := range targets {
 		if err := syncOne(ctx, rec, prune, out); err != nil {
