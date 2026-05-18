@@ -30,7 +30,7 @@ func TestNewSelectsImplementations(t *testing.T) {
 		Router:       "none",
 		Stacker:      "none",
 		Coordination: "basic",
-	}, config.MachineConfig{})
+	}, config.MachineConfig{}, "")
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestNewSelectsImplementations(t *testing.T) {
 }
 
 func TestNewDefaultsToNoOp(t *testing.T) {
-	set, err := New(config.ProvidersSection{}, config.MachineConfig{})
+	set, err := New(config.ProvidersSection{}, config.MachineConfig{}, "")
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestNewDefaultsToNoOp(t *testing.T) {
 }
 
 func TestNewRejectsUnknownProvider(t *testing.T) {
-	if _, err := New(config.ProvidersSection{Infra: "nomad"}, config.MachineConfig{}); err == nil {
+	if _, err := New(config.ProvidersSection{Infra: "nomad"}, config.MachineConfig{}, ""); err == nil {
 		t.Error("expected error for unknown infra provider")
 	}
 }

@@ -42,7 +42,7 @@ func TestNewSelectsStackerAndRouter(t *testing.T) {
 		Router:       "portless",
 		Stacker:      "graphite",
 		Coordination: "basic",
-	}, config.MachineConfig{})
+	}, config.MachineConfig{}, "")
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}

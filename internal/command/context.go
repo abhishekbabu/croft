@@ -50,7 +50,7 @@ func loadContext(startDir string) (*appContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	providers, err := provider.New(cfg.Providers, machine)
+	providers, err := provider.New(cfg.Providers, machine, store.Dir())
 	if err != nil {
 		return nil, err
 	}

@@ -6,10 +6,8 @@ import "fmt"
 // baseline / zero-dependency option is listed first in each set so it can
 // double as the default.
 var (
-	// Multiplexers are the valid `providers.multiplexer` values. (cmux is a
-	// planned backend but not yet implemented — it needs a dedicated adapter,
-	// not the tmux CLI.)
-	Multiplexers = []string{"none", "tmux"}
+	// Multiplexers are the valid `providers.multiplexer` values.
+	Multiplexers = []string{"none", "tmux", "cmux"}
 	// InfraProviders are the valid `providers.infra` values.
 	InfraProviders = []string{"none", "docker-compose"}
 	// Routers are the valid `providers.router` values.

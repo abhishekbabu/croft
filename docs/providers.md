@@ -51,8 +51,15 @@ Requires `tmux` on `PATH` (or a `[bins]` override).
 
 ### `cmux`
 
-Planned, not yet implemented. cmux is not tmux-CLI-compatible and needs a
-dedicated adapter; selecting it currently fails with a clear error.
+A cmux *workspace* is the session; a cmux *surface* is a window. cmux only
+gives a surface a live terminal while it is rendered on screen, so croft must
+be **run from inside a focused cmux terminal**. Each window is created by
+focusing croft's own surface, splitting it (the split is live), running the
+command there, then moving the live surface into the worktree's workspace.
+
+If croft's surface cannot be focused — croft was not run from a cmux terminal —
+the operation refuses with a clear message rather than creating a dead surface.
+Requires `$CMUX_SURFACE_ID` (set automatically inside cmux terminals).
 
 ---
 

@@ -18,9 +18,10 @@ type Set struct {
 }
 
 // New builds a Set from the project's provider configuration and the machine
-// config (for binary paths). Unselected or not-yet-implemented providers fall
-// back to their no-op implementation, so core always has a usable Set.
-func New(p config.ProvidersSection, m config.MachineConfig) (Set, error) {
+// config (for binary paths). stateDir is where stateful providers persist
+// their bookkeeping. Unselected or not-yet-implemented providers fall back to
+// their no-op implementation, so core always has a usable Set.
+func New(p config.ProvidersSection, m config.MachineConfig, stateDir string) (Set, error) {
 	s := Set{
 		Multiplexer:  NoneMultiplexer{},
 		Infra:        NoneInfra{},
@@ -33,6 +34,8 @@ func New(p config.ProvidersSection, m config.MachineConfig) (Set, error) {
 	case "", "none":
 	case "tmux":
 		s.Multiplexer = NewTmuxMultiplexer(m.Bin("tmux"))
+	case "cmux":
+		s.Multiplexer = NewCmuxMultiplexer(m.Bin("cmux"), stateDir)
 	default:
 		return Set{}, fmt.Errorf("unsupported multiplexer provider %q", p.Multiplexer)
 	}

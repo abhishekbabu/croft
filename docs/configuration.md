@@ -22,7 +22,7 @@ range    = "3000-3999"             # inclusive range each worktree draws from
 services = ["api", "postgres"]     # each service gets a unique port per worktree
 
 [providers]
-multiplexer  = "tmux"              # none | tmux
+multiplexer  = "tmux"              # none | tmux | cmux
 infra        = "docker-compose"    # none | docker-compose
 router       = "none"              # none | portless
 stacker      = "none"              # none | graphite
