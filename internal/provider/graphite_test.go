@@ -1,11 +1,20 @@
 package provider
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/abhishekbabu/croft/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
+
+// prependToPATH puts binPath's directory at the front of $PATH for the test,
+// so a hardcoded tool lookup (loadPRStates resolves "gh") finds the fake.
+func prependToPATH(t *testing.T, binPath string) {
+	t.Helper()
+	t.Setenv("PATH", filepath.Dir(binPath)+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
 
 func TestParseStackBranches(t *testing.T) {
 	// Mimics `gt log short -s` with ANSI codes and tree-drawing characters.
@@ -50,4 +59,42 @@ esac`)
 	require.True(t, st.Rebased)
 	require.Equal(t, "stack synced", st.Detail)
 	require.Equal(t, branches, st.Branches)
+}
+
+// TestGraphiteAllResolved drives the teardown-gate logic against a fake `gt`
+// (the stack) and a fake `gh` (the PR states loadPRStates queries).
+func TestGraphiteAllResolved(t *testing.T) {
+	const gtLog = `[ "$1" = log ] && printf '%s\n' 'roa-1' 'roa-2'
+exit 0`
+	wt := Worktree{Path: t.TempDir()}
+
+	t.Run("all merged or closed is resolved", func(t *testing.T) {
+		gt := testutil.FakeBin(t, "gt", gtLog)
+		gh := testutil.FakeBin(t, "gh",
+			`echo '[{"headRefName":"roa-1","state":"MERGED"},{"headRefName":"roa-2","state":"CLOSED"}]'`)
+		prependToPATH(t, gh)
+
+		ok, err := NewGraphiteStacker(gt).AllResolved(wt)
+		require.NoError(t, err)
+		require.True(t, ok)
+	})
+
+	t.Run("an open branch is not resolved", func(t *testing.T) {
+		gt := testutil.FakeBin(t, "gt", gtLog)
+		gh := testutil.FakeBin(t, "gh",
+			`echo '[{"headRefName":"roa-1","state":"MERGED"},{"headRefName":"roa-2","state":"OPEN"}]'`)
+		prependToPATH(t, gh)
+
+		ok, err := NewGraphiteStacker(gt).AllResolved(wt)
+		require.NoError(t, err)
+		require.False(t, ok)
+	})
+
+	t.Run("an empty stack is not resolved", func(t *testing.T) {
+		gt := testutil.FakeBin(t, "gt", `[ "$1" = log ] && echo 'main'
+exit 0`)
+		ok, err := NewGraphiteStacker(gt).AllResolved(wt)
+		require.NoError(t, err)
+		require.False(t, ok, "an undeterminable stack must never trip the gate")
+	})
 }
