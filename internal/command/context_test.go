@@ -34,7 +34,7 @@ func TestLiveStatusDerivation(t *testing.T) {
 	require.NoError(t, doNew(ctx, "feat", "", "", &strings.Builder{}))
 	rec, _, _ := ctx.Store.Get("feat")
 
-	require.Equal(t, "-", ctx.liveStatus(rec), "no agent")
+	require.Empty(t, ctx.liveStatus(rec), "no agent yields the empty status")
 
 	session := provider.ProjectName(ctx.providerWorktree(rec))
 	rec.Status = state.StatusWorking

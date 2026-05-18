@@ -12,15 +12,18 @@ import (
 	"github.com/abhishekbabu/croft/internal/env"
 )
 
-// Agent-state markers a worktree can carry (PLAN.md §2.3). The status dashboard
-// renders these; an empty status means "no agent".
+// Status is a worktree's agent-state marker (PLAN.md §2.3). The status
+// dashboard renders these; the empty Status means "no agent".
+type Status string
+
+// Worktree agent-state markers. StatusWorking is the only value croft
+// persists; StatusDone, StatusRebase, and StatusMissing are derived live by
+// the command layer and never written to the registry.
 const (
-	StatusSetup   = "setup"
-	StatusWorking = "working"
-	StatusDone    = "done"
-	StatusError   = "error"
-	StatusRebase  = "rebase"
-	StatusMissing = "missing" // derived: the worktree directory is gone
+	StatusWorking Status = "working" // an agent is running in the worktree
+	StatusDone    Status = "done"    // the agent's window has exited (derived)
+	StatusRebase  Status = "rebase"  // a rebase is in progress (derived)
+	StatusMissing Status = "missing" // the worktree directory is gone (derived)
 )
 
 // Worktree is one registry record describing a croft-managed checkout.
@@ -30,7 +33,7 @@ type Worktree struct {
 	Path    string         `json:"path"`
 	Ports   map[string]int `json:"ports,omitempty"`
 	URL     string         `json:"url,omitempty"`
-	Status  string         `json:"status,omitempty"`
+	Status  Status         `json:"status,omitempty"`
 	Created time.Time      `json:"created"`
 }
 

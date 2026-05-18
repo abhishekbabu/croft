@@ -67,7 +67,7 @@ func doLs(ctx *appContext, out io.Writer) error {
 		go func(i int, wt state.Worktree) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			statuses[i] = ctx.liveStatus(wt)
+			statuses[i] = displayStatus(ctx.liveStatus(wt))
 		}(i, reg.Worktrees[slug])
 	}
 	wg.Wait()

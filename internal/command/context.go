@@ -115,8 +115,9 @@ func takenPorts(r state.Registry) map[int]bool {
 
 // liveStatus computes a worktree's current status, reconciling what the
 // registry recorded against reality — directory existence, an in-progress
-// rebase, and whether a launched agent's window is still alive.
-func (c *appContext) liveStatus(wt state.Worktree) string {
+// rebase, and whether a launched agent's window is still alive. The empty
+// status means "no agent".
+func (c *appContext) liveStatus(wt state.Worktree) state.Status {
 	if !dirExists(wt.Path) {
 		return state.StatusMissing
 	}
@@ -133,10 +134,16 @@ func (c *appContext) liveStatus(wt state.Worktree) string {
 		}
 		return state.StatusDone // the agent's window is gone
 	}
-	if wt.Status != "" {
-		return wt.Status
+	return wt.Status
+}
+
+// displayStatus renders a worktree status for the CLI: the empty status
+// (no agent) shows as a dash.
+func displayStatus(s state.Status) string {
+	if s == "" {
+		return "-"
 	}
-	return "-"
+	return string(s)
 }
 
 // dirExists reports whether path is an existing directory.
