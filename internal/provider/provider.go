@@ -18,40 +18,6 @@ type Worktree struct {
 	Ports   map[string]int
 }
 
-// InfraState describes whether a worktree's container stack is running.
-type InfraState struct {
-	Up     bool
-	Detail string
-}
-
-// StackState describes the result of a stack sync (used by Stacker).
-type StackState struct {
-	Branches []string
-	Rebased  bool
-	Detail   string
-}
-
-// PeerSpec describes a coordinated agent to spawn (used by Coordination).
-type PeerSpec struct {
-	Name  string
-	Agent string
-	Role  string
-	Dir   string
-}
-
-// PeerStatus is a coordinated peer's lifecycle state.
-type PeerStatus string
-
-// PeerStatusWorking marks a peer whose agent has been launched.
-const PeerStatusWorking PeerStatus = "working"
-
-// Peer is a spawned, coordinated agent.
-type Peer struct {
-	Name   string
-	Agent  string
-	Status PeerStatus
-}
-
 // ProjectName returns the per-worktree namespace shared by the container stack
 // and the terminal session — "<project>-<slug>", so neither collides across
 // worktrees or across projects.

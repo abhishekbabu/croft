@@ -33,3 +33,24 @@ func (NoopCoordination) Dispatch(Peer, string) error { return errCoordinationUna
 // a PeerSpec. It lets the coordination provider spawn agents without the
 // provider package depending on the agent package.
 type AgentLauncher func(spec PeerSpec) (argv []string, env map[string]string, err error)
+
+// PeerSpec describes a coordinated agent to spawn (used by Coordination).
+type PeerSpec struct {
+	Name  string
+	Agent string
+	Role  string
+	Dir   string
+}
+
+// PeerStatus is a coordinated peer's lifecycle state.
+type PeerStatus string
+
+// PeerStatusWorking marks a peer whose agent has been launched.
+const PeerStatusWorking PeerStatus = "working"
+
+// Peer is a spawned, coordinated agent.
+type Peer struct {
+	Name   string
+	Agent  string
+	Status PeerStatus
+}

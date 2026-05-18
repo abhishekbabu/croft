@@ -10,6 +10,12 @@ type Infra interface {
 	Status(wt Worktree) (InfraState, error)
 }
 
+// InfraState describes whether a worktree's container stack is running.
+type InfraState struct {
+	Up     bool
+	Detail string
+}
+
 // NoneInfra is the no-op infra provider: worktrees have no container stack.
 type NoneInfra struct{}
 

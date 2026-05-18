@@ -11,6 +11,13 @@ type Stacker interface {
 	AllResolved(wt Worktree) (bool, error)
 }
 
+// StackState describes the result of a stack sync (used by Stacker).
+type StackState struct {
+	Branches []string
+	Rebased  bool
+	Detail   string
+}
+
 // NoneStacker is the no-op stacker: croft has no stack awareness.
 type NoneStacker struct{}
 
