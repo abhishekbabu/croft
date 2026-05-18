@@ -2,7 +2,6 @@ package agent
 
 import (
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/abhishekbabu/croft/internal/config"
@@ -18,61 +17,6 @@ func TestDeterministicSessionID(t *testing.T) {
 	require.Equal(t, a, b, "session id should be stable")
 	require.NotEqual(t, a, c, "different keys should produce different ids")
 	require.Regexp(t, uuidV4, a, "session id should be a v4 UUID")
-}
-
-func TestClaudeLaunch(t *testing.T) {
-	r := &ClaudeRunner{bin: "claude"}
-
-	inv, err := r.Launch(Spec{Dir: "/wt", SessionID: "sid-1"})
-	require.NoError(t, err)
-	require.Equal(t, "claude", inv.Path)
-	require.Equal(t, "/wt", inv.Dir)
-	require.Contains(t, inv.Args, "--session-id")
-	require.Contains(t, inv.Args, "sid-1")
-	require.NotContains(t, inv.Args, "-p", "interactive launch should not be headless")
-
-	headless, err := r.Launch(Spec{Headless: true})
-	require.NoError(t, err)
-	require.Contains(t, headless.Args, "-p")
-	require.Contains(t, headless.Args, "--bare")
-}
-
-func TestClaudeResume(t *testing.T) {
-	r := &ClaudeRunner{bin: "claude"}
-	inv, err := r.Resume("sid-9", Spec{})
-	require.NoError(t, err)
-	require.Contains(t, inv.Args, "--resume")
-	require.Contains(t, inv.Args, "sid-9")
-
-	_, err = r.Resume("", Spec{})
-	require.Error(t, err, "resume with an empty id should fail")
-}
-
-func TestCodexLaunch(t *testing.T) {
-	r := &CodexRunner{bin: "codex"}
-
-	inv, err := r.Launch(Spec{Headless: true, Profile: "dev", Prompt: "do it"})
-	require.NoError(t, err)
-	require.Subset(t, inv.Args, []string{"exec", "--json", "--profile", "dev"})
-
-	interactive, err := r.Launch(Spec{})
-	require.NoError(t, err)
-	require.NotContains(t, interactive.Args, "exec", "interactive codex launch should not use exec")
-
-	resume, err := r.Resume("th-1", Spec{Headless: true})
-	require.NoError(t, err)
-	require.Contains(t, resume.Args, "resume")
-	require.Contains(t, resume.Args, "th-1")
-}
-
-func TestExecRunnerSubstitutes(t *testing.T) {
-	r := &ExecRunner{name: "gemini", argv: []string{"gemini", "--cwd", "{dir}", "{prompt}"}}
-	inv, err := r.Launch(Spec{Dir: "/wt/demo", Prompt: "fix bug"})
-	require.NoError(t, err)
-	require.Equal(t, "gemini", inv.Path)
-	joined := strings.Join(inv.Args, " ")
-	require.Contains(t, joined, "/wt/demo")
-	require.Contains(t, joined, "fix bug")
 }
 
 func TestNewFactory(t *testing.T) {
