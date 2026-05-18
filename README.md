@@ -21,8 +21,9 @@ run.
   stack, port set, route, and dev server.
 - **Stable, path-derived identity** — navigating a branch stack never changes a
   worktree's resources or state.
-- **Pluggable providers** — multiplexer, infra, router, and stacker backends
-  are swappable; every one has a no-op default, so plain git + Docker is enough.
+- **Pluggable providers** — multiplexer, infra, router, stacker, and
+  coordination backends are swappable; every one has a no-op default, so plain
+  git + Docker is enough.
 - **Agent-ready** — launch Claude, Codex, or any CLI agent into a worktree, and
   coordinate several of them.
 - **Idempotent and transactional** — every create and teardown is safe to

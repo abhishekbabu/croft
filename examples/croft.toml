@@ -22,7 +22,7 @@ range    = "3000-3999"
 services = ["api", "frontend", "postgres", "redis"]
 
 [providers]
-multiplexer  = "tmux"            # none | tmux
+multiplexer  = "tmux"            # none | tmux | cmux
 infra        = "docker-compose"  # none | docker-compose
 router       = "portless"        # none | portless
 stacker      = "graphite"        # none | graphite

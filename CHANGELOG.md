@@ -26,7 +26,7 @@ First release — the Phase 1 isolation layer.
   worktrees.
 - Two-layer TOML configuration (project + per-machine) and JSON runtime state
   under the XDG data directory.
-- Five swappable provider interfaces — multiplexer (`tmux`), infra
+- Five swappable provider interfaces — multiplexer (`tmux`/`cmux`), infra
   (`docker-compose`), router (`portless`), stacker (`graphite`), coordination
   (`basic`) — each with a no-op default.
 - Agent runners for Claude, Codex, and any generic CLI agent.
