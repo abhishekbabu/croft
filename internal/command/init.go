@@ -72,8 +72,8 @@ func defaultProjectConfig(root string) config.ProjectConfig {
 		Project: config.ProjectSection{Name: filepath.Base(root)},
 		Ports:   config.PortsSection{Range: "3000-3999"},
 		Agents: []config.AgentConfig{
-			{Name: "claude", Runner: "claude"},
-			{Name: "codex", Runner: "codex"},
+			{Name: "claude", Runner: config.RunnerClaude},
+			{Name: "codex", Runner: config.RunnerCodex},
 		},
 	}
 	// applyDefaults is unexported; round-trip through Scaffold/Decode is how
@@ -81,8 +81,11 @@ func defaultProjectConfig(root string) config.ProjectConfig {
 	p.Worktree.Root = "../worktrees"
 	p.Worktree.Naming = p.Project.Name + ".{slug}"
 	p.Providers = config.ProvidersSection{
-		Multiplexer: "none", Infra: "none", Router: "none",
-		Stacker: "none", Coordination: "basic",
+		Multiplexer:  config.MultiplexerNone,
+		Infra:        config.InfraNone,
+		Router:       config.RouterNone,
+		Stacker:      config.StackerNone,
+		Coordination: config.CoordinationBasic,
 	}
 	return p
 }
@@ -94,10 +97,10 @@ func gatherAnswers(p *config.ProjectConfig, in *bufio.Reader, out io.Writer) {
 	p.Worktree.Naming = p.Project.Name + ".{slug}"
 	p.Worktree.Root = pr.text("Worktree root (relative to repo)", p.Worktree.Root)
 	p.Worktree.DevCommand = pr.text("Dev server command ({port} is substituted)", p.Worktree.DevCommand)
-	p.Providers.Multiplexer = pr.choice("Multiplexer", config.Multiplexers, p.Providers.Multiplexer)
-	p.Providers.Infra = pr.choice("Infra", config.InfraProviders, p.Providers.Infra)
-	p.Providers.Router = pr.choice("Router", config.Routers, p.Providers.Router)
-	p.Providers.Stacker = pr.choice("Stacker", config.Stackers, p.Providers.Stacker)
+	p.Providers.Multiplexer = chooseEnum(pr, "Multiplexer", config.Multiplexers, p.Providers.Multiplexer)
+	p.Providers.Infra = chooseEnum(pr, "Infra", config.InfraProviders, p.Providers.Infra)
+	p.Providers.Router = chooseEnum(pr, "Router", config.Routers, p.Providers.Router)
+	p.Providers.Stacker = chooseEnum(pr, "Stacker", config.Stackers, p.Providers.Stacker)
 }
 
 // gitRepoRoot resolves the top level of the git repo containing dir.
@@ -130,16 +133,21 @@ func (p prompter) text(label, def string) string {
 	return line
 }
 
-// choice asks for a value constrained to options, re-prompting on a bad answer.
-func (p prompter) choice(label string, options []string, def string) string {
-	prompt := fmt.Sprintf("%s (%s)", label, strings.Join(options, "/"))
+// chooseEnum asks for an enum value constrained to options, re-prompting on a
+// bad answer. It is a free function because Go methods cannot be generic.
+func chooseEnum[T ~string](pr prompter, label string, options []T, def T) T {
+	strs := make([]string, len(options))
+	for i, o := range options {
+		strs[i] = string(o)
+	}
+	prompt := fmt.Sprintf("%s (%s)", label, strings.Join(strs, "/"))
 	for {
-		v := p.text(prompt, def)
+		v := T(pr.text(prompt, string(def)))
 		for _, o := range options {
 			if v == o {
 				return v
 			}
 		}
-		fmt.Fprintf(p.out, "  %q is not one of %v\n", v, options)
+		fmt.Fprintf(pr.out, "  %q is not one of %v\n", v, strs)
 	}
 }

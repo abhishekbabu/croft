@@ -51,11 +51,11 @@ type Runner interface {
 // from the machine config.
 func New(a config.AgentConfig, m config.MachineConfig) (Runner, error) {
 	switch a.Runner {
-	case "claude":
+	case config.RunnerClaude:
 		return &ClaudeRunner{bin: m.Bin("claude")}, nil
-	case "codex":
+	case config.RunnerCodex:
 		return &CodexRunner{bin: m.Bin("codex")}, nil
-	case "exec":
+	case config.RunnerExec:
 		if len(a.Command) == 0 {
 			return nil, fmt.Errorf("exec runner %q has no command", a.Name)
 		}

@@ -54,12 +54,12 @@ func launchAgent(ctx *appContext, rec state.Worktree, agentName string, env map[
 
 	pw := ctx.providerWorktree(rec)
 	session := provider.ProjectName(pw)
-	if ctx.Providers.Multiplexer.Managed() && ctx.Providers.Multiplexer.HasWindow(session, "agent") {
+	if ctx.Providers.Multiplexer.Managed() && ctx.Providers.Multiplexer.HasWindow(session, windowAgent) {
 		fmt.Fprintf(out, "Agent already running in worktree %q\n", rec.Slug)
 		return nil
 	}
 	if err := ctx.Providers.Multiplexer.RunWindow(
-		session, "agent", rec.Path, inv.Env, inv.Argv()); err != nil {
+		session, windowAgent, rec.Path, inv.Env, inv.Argv()); err != nil {
 		return fmt.Errorf("launch agent: %w", err)
 	}
 

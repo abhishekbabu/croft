@@ -14,6 +14,12 @@ import (
 	"github.com/abhishekbabu/croft/internal/worktree"
 )
 
+// Window names croft assigns inside a worktree's multiplexer session.
+const (
+	windowDev   = "dev"   // the dev server
+	windowAgent = "agent" // an agent launched via `new --agent`
+)
+
 // appContext bundles everything a command needs: the resolved repository,
 // parsed configuration, the state store, a git-worktree manager, and the
 // configured provider set.
@@ -112,7 +118,7 @@ func takenPorts(r state.Registry) map[int]bool {
 // rebase, and whether a launched agent's window is still alive.
 func (c *appContext) liveStatus(wt state.Worktree) string {
 	if !dirExists(wt.Path) {
-		return "missing"
+		return state.StatusMissing
 	}
 	if c.Manager.InRebase(wt.Path) {
 		return state.StatusRebase
@@ -122,7 +128,7 @@ func (c *appContext) liveStatus(wt state.Worktree) string {
 		if !mux.Managed() {
 			return state.StatusWorking // unmanaged: trust the recorded value
 		}
-		if mux.HasWindow(provider.ProjectName(c.providerWorktree(wt)), "agent") {
+		if mux.HasWindow(provider.ProjectName(c.providerWorktree(wt)), windowAgent) {
 			return state.StatusWorking
 		}
 		return state.StatusDone // the agent's window is gone

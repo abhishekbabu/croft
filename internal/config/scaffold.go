@@ -37,16 +37,16 @@ func Scaffold(p ProjectConfig) string {
 	w("services = %s\n\n", tomlStringArray(p.Ports.Services))
 
 	w("[providers]\n")
-	w("multiplexer  = %s  # %s\n", tomlString(p.Providers.Multiplexer), strings.Join(Multiplexers, " | "))
-	w("infra        = %s  # %s\n", tomlString(p.Providers.Infra), strings.Join(InfraProviders, " | "))
-	w("router       = %s  # %s\n", tomlString(p.Providers.Router), strings.Join(Routers, " | "))
-	w("stacker      = %s  # %s\n", tomlString(p.Providers.Stacker), strings.Join(Stackers, " | "))
-	w("coordination = %s  # %s\n\n", tomlString(p.Providers.Coordination), strings.Join(Coordinations, " | "))
+	w("multiplexer  = %s  # %s\n", tomlString(string(p.Providers.Multiplexer)), enumList(Multiplexers))
+	w("infra        = %s  # %s\n", tomlString(string(p.Providers.Infra)), enumList(InfraProviders))
+	w("router       = %s  # %s\n", tomlString(string(p.Providers.Router)), enumList(Routers))
+	w("stacker      = %s  # %s\n", tomlString(string(p.Providers.Stacker)), enumList(Stackers))
+	w("coordination = %s  # %s\n\n", tomlString(string(p.Providers.Coordination)), enumList(Coordinations))
 
 	for _, a := range p.Agents {
 		w("[[agents]]\n")
 		w("name   = %s\n", tomlString(a.Name))
-		w("runner = %s\n\n", tomlString(a.Runner))
+		w("runner = %s\n\n", tomlString(string(a.Runner)))
 	}
 
 	w("[hooks]\n")

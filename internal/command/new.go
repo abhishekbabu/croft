@@ -120,11 +120,11 @@ func startDevServer(ctx *appContext, rec state.Worktree, env map[string]string, 
 		return nil
 	}
 	session := provider.ProjectName(ctx.providerWorktree(rec))
-	if mux.HasWindow(session, "dev") {
+	if mux.HasWindow(session, windowDev) {
 		fmt.Fprintln(out, "  dev server: already running")
 		return nil
 	}
-	if err := mux.RunWindow(session, "dev", rec.Path, env, []string{"sh", "-c", cmd}); err != nil {
+	if err := mux.RunWindow(session, windowDev, rec.Path, env, []string{"sh", "-c", cmd}); err != nil {
 		return fmt.Errorf("start dev server: %w", err)
 	}
 	fmt.Fprintf(out, "  dev server: started (%s)\n", cmd)

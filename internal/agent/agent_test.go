@@ -101,12 +101,12 @@ func TestExecRunnerSubstitutes(t *testing.T) {
 
 func TestNewFactory(t *testing.T) {
 	m := config.MachineConfig{}
-	for _, runner := range []string{"claude", "codex"} {
-		got, err := New(config.AgentConfig{Name: runner, Runner: runner}, m)
+	for _, runner := range []config.AgentRunner{config.RunnerClaude, config.RunnerCodex} {
+		got, err := New(config.AgentConfig{Name: string(runner), Runner: runner}, m)
 		if err != nil {
 			t.Fatalf("New(%s): %v", runner, err)
 		}
-		if got.Name() != runner {
+		if got.Name() != string(runner) {
 			t.Errorf("New(%s).Name() = %q", runner, got.Name())
 		}
 	}

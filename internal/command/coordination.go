@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/abhishekbabu/croft/internal/agent"
+	"github.com/abhishekbabu/croft/internal/config"
 	"github.com/abhishekbabu/croft/internal/provider"
 )
 
@@ -16,7 +17,7 @@ import (
 // native Agent Teams integration is deferred Phase 2 polish (PLAN.md §5).
 func buildCoordination(ctx *appContext) provider.Coordination {
 	switch ctx.Config.Providers.Coordination {
-	case "basic", "claude-agent-teams":
+	case config.CoordinationBasic, config.CoordinationClaudeAgentTeams:
 		peersDir := filepath.Join(ctx.Store.Dir(), "peers")
 		session := ctx.Config.Project.Name + "-peers"
 		return provider.NewBasicCoordination(peersDir, session, ctx.Providers.Multiplexer, agentLauncher(ctx))

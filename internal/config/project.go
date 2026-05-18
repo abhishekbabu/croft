@@ -47,20 +47,20 @@ type PortsSection struct {
 
 // ProvidersSection selects the backend implementation for each provider slot.
 type ProvidersSection struct {
-	Multiplexer  string `toml:"multiplexer"`
-	Infra        string `toml:"infra"`
-	Router       string `toml:"router"`
-	Stacker      string `toml:"stacker"`
-	Coordination string `toml:"coordination"`
+	Multiplexer  Multiplexer   `toml:"multiplexer"`
+	Infra        InfraProvider `toml:"infra"`
+	Router       Router        `toml:"router"`
+	Stacker      Stacker       `toml:"stacker"`
+	Coordination Coordination  `toml:"coordination"`
 }
 
 // AgentConfig names an agent and the runner that backs it. Command is the
 // argv template used only by the "exec" runner ({dir} and {prompt} are
 // substituted at launch).
 type AgentConfig struct {
-	Name    string   `toml:"name"`
-	Runner  string   `toml:"runner"`
-	Command []string `toml:"command"`
+	Name    string      `toml:"name"`
+	Runner  AgentRunner `toml:"runner"`
+	Command []string    `toml:"command"`
 }
 
 // HooksSection holds shell commands run around worktree lifecycle events.
@@ -107,19 +107,19 @@ func (p *ProjectConfig) applyDefaults() {
 		}
 	}
 	if p.Providers.Multiplexer == "" {
-		p.Providers.Multiplexer = "none"
+		p.Providers.Multiplexer = MultiplexerNone
 	}
 	if p.Providers.Infra == "" {
-		p.Providers.Infra = "none"
+		p.Providers.Infra = InfraNone
 	}
 	if p.Providers.Router == "" {
-		p.Providers.Router = "none"
+		p.Providers.Router = RouterNone
 	}
 	if p.Providers.Stacker == "" {
-		p.Providers.Stacker = "none"
+		p.Providers.Stacker = StackerNone
 	}
 	if p.Providers.Coordination == "" {
-		p.Providers.Coordination = "basic"
+		p.Providers.Coordination = CoordinationBasic
 	}
 }
 
@@ -136,17 +136,22 @@ func (p *ProjectConfig) Validate() error {
 			return err
 		}
 	}
-	for field, check := range map[string][2]string{
-		"providers.multiplexer":  {p.Providers.Multiplexer, "multiplexer"},
-		"providers.infra":        {p.Providers.Infra, "infra"},
-		"providers.router":       {p.Providers.Router, "router"},
-		"providers.stacker":      {p.Providers.Stacker, "stacker"},
-		"providers.coordination": {p.Providers.Coordination, "coordination"},
-	} {
-		if err := validateProvider(field, check[0], check[1]); err != nil {
-			return err
-		}
+	if !p.Providers.Multiplexer.Valid() {
+		return fmt.Errorf("providers.multiplexer: %q is not one of %s", p.Providers.Multiplexer, enumList(Multiplexers))
 	}
+	if !p.Providers.Infra.Valid() {
+		return fmt.Errorf("providers.infra: %q is not one of %s", p.Providers.Infra, enumList(InfraProviders))
+	}
+	if !p.Providers.Router.Valid() {
+		return fmt.Errorf("providers.router: %q is not one of %s", p.Providers.Router, enumList(Routers))
+	}
+	if !p.Providers.Stacker.Valid() {
+		return fmt.Errorf("providers.stacker: %q is not one of %s", p.Providers.Stacker, enumList(Stackers))
+	}
+	if !p.Providers.Coordination.Valid() {
+		return fmt.Errorf("providers.coordination: %q is not one of %s", p.Providers.Coordination, enumList(Coordinations))
+	}
+
 	seen := map[string]bool{}
 	for i, a := range p.Agents {
 		if strings.TrimSpace(a.Name) == "" {
@@ -156,32 +161,14 @@ func (p *ProjectConfig) Validate() error {
 			return fmt.Errorf("agents[%d].name: %q is duplicated", i, a.Name)
 		}
 		seen[a.Name] = true
-		if err := validateEnum(fmt.Sprintf("agents[%d].runner", i), a.Runner, AgentRunners); err != nil {
-			return err
+		if !a.Runner.Valid() {
+			return fmt.Errorf("agents[%d].runner: %q is not one of %s", i, a.Runner, enumList(AgentRunners))
 		}
-		if a.Runner == "exec" && len(a.Command) == 0 {
-			return fmt.Errorf("agents[%d].command: required when runner is \"exec\"", i)
+		if a.Runner == RunnerExec && len(a.Command) == 0 {
+			return fmt.Errorf("agents[%d].command: required when runner is %q", i, RunnerExec)
 		}
 	}
 	return nil
-}
-
-// validateProvider dispatches enum validation to the right allowed-value set.
-func validateProvider(field, value, slot string) error {
-	switch slot {
-	case "multiplexer":
-		return validateEnum(field, value, Multiplexers)
-	case "infra":
-		return validateEnum(field, value, InfraProviders)
-	case "router":
-		return validateEnum(field, value, Routers)
-	case "stacker":
-		return validateEnum(field, value, Stackers)
-	case "coordination":
-		return validateEnum(field, value, Coordinations)
-	default:
-		return fmt.Errorf("unknown provider slot %q", slot)
-	}
 }
 
 // Bounds parses the port range into inclusive low/high bounds.

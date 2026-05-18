@@ -32,15 +32,15 @@ func New(p config.ProvidersSection, m config.MachineConfig, stateDir string) (Se
 	}
 
 	switch p.Multiplexer {
-	case "", "none":
-	case "tmux":
+	case "", config.MultiplexerNone:
+	case config.MultiplexerTmux:
 		s.Multiplexer = NewTmuxMultiplexer(m.Bin("tmux"))
-	case "cmux":
+	case config.MultiplexerCmux:
 		// cmux can only drive surfaces from inside a cmux terminal; fail fast
 		// here rather than partway through a command.
 		if os.Getenv("CMUX_SURFACE_ID") == "" {
-			return Set{}, fmt.Errorf(`providers.multiplexer is "cmux" but croft is not ` +
-				`running inside a cmux terminal ($CMUX_SURFACE_ID is unset)`)
+			return Set{}, fmt.Errorf(`providers.multiplexer is %q but croft is not `+
+				`running inside a cmux terminal ($CMUX_SURFACE_ID is unset)`, config.MultiplexerCmux)
 		}
 		s.Multiplexer = NewCmuxMultiplexer(m.Bin("cmux"), stateDir)
 	default:
@@ -48,32 +48,32 @@ func New(p config.ProvidersSection, m config.MachineConfig, stateDir string) (Se
 	}
 
 	switch p.Infra {
-	case "", "none":
-	case "docker-compose":
+	case "", config.InfraNone:
+	case config.InfraDockerCompose:
 		s.Infra = NewComposeInfra(m.Bin("docker"))
 	default:
 		return Set{}, fmt.Errorf("unknown infra provider %q", p.Infra)
 	}
 
 	switch p.Router {
-	case "", "none":
-	case "portless":
+	case "", config.RouterNone:
+	case config.RouterPortless:
 		s.Router = NewPortlessRouter(m.Bin("portless"))
 	default:
 		return Set{}, fmt.Errorf("unknown router provider %q", p.Router)
 	}
 
 	switch p.Stacker {
-	case "", "none":
-	case "graphite":
+	case "", config.StackerNone:
+	case config.StackerGraphite:
 		s.Stacker = NewGraphiteStacker(m.Bin("gt"))
 	default:
 		return Set{}, fmt.Errorf("unknown stacker provider %q", p.Stacker)
 	}
 
 	switch p.Coordination {
-	case "", "basic", "claude-agent-teams":
-		// Implemented in a later milestone; placeholder until then.
+	case "", config.CoordinationBasic, config.CoordinationClaudeAgentTeams:
+		// The basic backend is wired in the command layer (buildCoordination).
 	default:
 		return Set{}, fmt.Errorf("unknown coordination provider %q", p.Coordination)
 	}

@@ -18,6 +18,7 @@ const (
 	StatusDone    = "done"
 	StatusError   = "error"
 	StatusRebase  = "rebase"
+	StatusMissing = "missing" // derived: the worktree directory is gone
 )
 
 // Worktree is one registry record describing a croft-managed checkout.
