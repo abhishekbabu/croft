@@ -25,7 +25,9 @@ jobs:
       - name: test
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
       - name: coverage
-        run: go tool cover -func=coverage.out | tail -1
+        run: |
+          go install github.com/vladopajic/go-test-coverage/v2@v2.18.8
+          go-test-coverage --config=.testcoverage.yml
       - name: vet
         run: go vet ./...
 

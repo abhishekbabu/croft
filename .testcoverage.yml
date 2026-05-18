@@ -1,0 +1,17 @@
+# go-test-coverage configuration — enforces a minimum total coverage in CI.
+# See https://github.com/vladopajic/go-test-coverage
+profile: coverage.out
+local-prefix: github.com/abhishekbabu/croft
+
+threshold:
+  # Total statement coverage across all non-excluded code.
+  total: 78
+
+exclude:
+  # Files that are not meaningfully unit-testable:
+  #   - cmd/croft/main.go — process glue (os.Exit, signal wiring).
+  #   - internal/testutil — test-support code, exercised only by other
+  #     packages' tests, so it can never show coverage of its own.
+  paths:
+    - cmd/croft/main\.go$
+    - internal/testutil/
