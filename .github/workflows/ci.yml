@@ -55,3 +55,18 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
           govulncheck ./...
+
+  pin-check:
+    name: action SHA pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: stable
+      # ratchet lint fails if any action in these workflows is referenced by a
+      # moving tag instead of a SHA — enforcing the pinning policy in CI.
+      - name: ratchet lint
+        run: |
+          go install github.com/sethvargo/ratchet@v0.11.4
+          ratchet lint .github/workflows/ci.yml .github/workflows/release.yml
