@@ -69,6 +69,10 @@ func doSync(ctx *appContext, branch string, prune bool, out io.Writer) error {
 		return nil
 	}
 
+	// Unlike ls/doctor, sync is deliberately sequential: every worktree of a
+	// repo shares one object database, and concurrent `git rebase`/`gt sync`
+	// runs would race on ref locks. It also keeps per-worktree progress output
+	// from interleaving.
 	var failures int
 	for _, rec := range targets {
 		if err := syncOne(ctx, rec, prune, out); err != nil {

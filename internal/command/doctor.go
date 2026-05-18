@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/abhishekbabu/croft/internal/provider"
 	"github.com/abhishekbabu/croft/internal/sh"
@@ -46,11 +47,29 @@ func NewDoctorCmd() *cobra.Command {
 
 // doDoctor runs every reconcile check and reports (or, with fix, repairs).
 func doDoctor(ctx *appContext, fix bool, out io.Writer) error {
+	// The checks are independent and each shells out (git, docker); run them
+	// concurrently and reassemble findings in declaration order.
+	checks := []func(*appContext) []finding{
+		checkStaleRegistry,
+		checkGitWorktrees,
+		checkOrphanDirs,
+		checkLeakedContainers,
+	}
+	results := make([][]finding, len(checks))
+	var wg sync.WaitGroup
+	for i, check := range checks {
+		wg.Add(1)
+		go func(i int, check func(*appContext) []finding) {
+			defer wg.Done()
+			results[i] = check(ctx)
+		}(i, check)
+	}
+	wg.Wait()
+
 	var findings []finding
-	findings = append(findings, checkStaleRegistry(ctx)...)
-	findings = append(findings, checkGitWorktrees(ctx)...)
-	findings = append(findings, checkOrphanDirs(ctx)...)
-	findings = append(findings, checkLeakedContainers(ctx)...)
+	for _, r := range results {
+		findings = append(findings, r...)
+	}
 
 	if len(findings) == 0 {
 		fmt.Fprintln(out, "All clear — no issues found.")
