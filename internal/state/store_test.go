@@ -1,11 +1,25 @@
 package state
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestOpenUsesXDGDataHome(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+
+	s, err := Open("demo")
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(dataHome, "croft", "demo"), s.Dir())
+
+	r, err := s.Load()
+	require.NoError(t, err)
+	require.Empty(t, r.Worktrees, "a fresh store has an empty registry")
+}
 
 func newStore(t *testing.T) *Store {
 	t.Helper()

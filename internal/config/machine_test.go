@@ -39,6 +39,27 @@ sso_profile = "demo-dev"
 	require.Equal(t, "demo-dev", m.AWS.SSOProfile)
 }
 
+func TestLoadMachineViaXDG(t *testing.T) {
+	cfgHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfgHome)
+
+	path, err := MachineConfigPath()
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(cfgHome, "croft", MachineFileName), path)
+
+	// No file there yet: LoadMachine returns a zero config without error.
+	m, err := LoadMachine()
+	require.NoError(t, err)
+	require.Empty(t, m.Bins)
+
+	// Once a config exists at the resolved path, LoadMachine reads it.
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	require.NoError(t, os.WriteFile(path, []byte("[defaults]\nagent = \"claude\"\n"), 0o644))
+	m, err = LoadMachine()
+	require.NoError(t, err)
+	require.Equal(t, "claude", m.Defaults.Agent)
+}
+
 func TestDefaultAgent(t *testing.T) {
 	p := ProjectConfig{Agents: []AgentConfig{{Name: "claude", Runner: RunnerClaude}}}
 
