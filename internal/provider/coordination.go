@@ -45,12 +45,12 @@ type AgentLauncher func(spec PeerSpec) (argv []string, env map[string]string, er
 
 // peerRecord is the on-disk representation of a spawned peer.
 type peerRecord struct {
-	Name    string    `json:"name"`
-	Agent   string    `json:"agent"`
-	Role    string    `json:"role,omitempty"`
-	Dir     string    `json:"dir"`
-	Status  string    `json:"status"`
-	Created time.Time `json:"created"`
+	Name    string     `json:"name"`
+	Agent   string     `json:"agent"`
+	Role    string     `json:"role,omitempty"`
+	Dir     string     `json:"dir"`
+	Status  PeerStatus `json:"status"`
+	Created time.Time  `json:"created"`
 }
 
 // BasicCoordination is the agent-agnostic coordination backend: file-based
@@ -91,7 +91,7 @@ func (c *BasicCoordination) Spawn(spec PeerSpec) (Peer, error) {
 		Agent:   spec.Agent,
 		Role:    spec.Role,
 		Dir:     spec.Dir,
-		Status:  "working",
+		Status:  PeerStatusWorking,
 		Created: time.Now().UTC(),
 	}
 	if err := c.savePeer(rec); err != nil {

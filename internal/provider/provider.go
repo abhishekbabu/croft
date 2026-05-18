@@ -39,11 +39,17 @@ type PeerSpec struct {
 	Dir   string
 }
 
+// PeerStatus is a coordinated peer's lifecycle state.
+type PeerStatus string
+
+// PeerStatusWorking marks a peer whose agent has been launched.
+const PeerStatusWorking PeerStatus = "working"
+
 // Peer is a spawned, coordinated agent.
 type Peer struct {
 	Name   string
 	Agent  string
-	Status string
+	Status PeerStatus
 }
 
 // ProjectName returns the per-worktree namespace shared by the container stack
