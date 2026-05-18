@@ -13,7 +13,6 @@ import (
 type GitWorktree struct {
 	Path     string
 	Branch   string // empty when detached
-	Head     string
 	Detached bool
 	Bare     bool
 }
@@ -169,8 +168,6 @@ func parseWorktreeList(out string) []GitWorktree {
 			continue
 		}
 		switch key {
-		case "HEAD":
-			cur.Head = val
 		case "branch":
 			cur.Branch = strings.TrimPrefix(val, "refs/heads/")
 		case "detached":

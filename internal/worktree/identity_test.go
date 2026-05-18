@@ -37,7 +37,7 @@ func TestSlugFromDirRejectsNonMatching(t *testing.T) {
 	require.False(t, ok, "empty slug should be rejected")
 }
 
-func TestResolveAndIdentityFromPath(t *testing.T) {
+func TestResolve(t *testing.T) {
 	const pattern = "demo.{slug}"
 	root := filepath.Join(t.TempDir(), "worktrees")
 
@@ -45,8 +45,4 @@ func TestResolveAndIdentityFromPath(t *testing.T) {
 	require.Equal(t, "my-feat", id.Slug)
 	require.Equal(t, "demo.my-feat", id.Dir)
 	require.Equal(t, filepath.Join(root, "demo.my-feat"), id.Path)
-
-	back, ok := IdentityFromPath(id.Path, pattern)
-	require.True(t, ok, "IdentityFromPath should match")
-	require.Equal(t, id.Slug, back.Slug)
 }

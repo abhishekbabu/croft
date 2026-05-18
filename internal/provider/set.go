@@ -9,13 +9,14 @@ import (
 
 // Set is the bundle of provider implementations selected by a project's
 // configuration. Core code holds a Set and calls the interfaces; it never
-// branches on which backend is active.
+// branches on which backend is active. Coordination is deliberately absent:
+// it needs runtime wiring (a multiplexer instance, an agent launcher) the
+// provider package cannot assemble, so the command layer builds it on demand.
 type Set struct {
-	Multiplexer  Multiplexer
-	Infra        Infra
-	Router       Router
-	Stacker      Stacker
-	Coordination Coordination
+	Multiplexer Multiplexer
+	Infra       Infra
+	Router      Router
+	Stacker     Stacker
 }
 
 // New builds a Set from the project's provider configuration and the machine
@@ -24,11 +25,10 @@ type Set struct {
 // their no-op implementation, so core always has a usable Set.
 func New(p config.ProvidersSection, m config.MachineConfig, stateDir string) (Set, error) {
 	s := Set{
-		Multiplexer:  NoneMultiplexer{},
-		Infra:        NoneInfra{},
-		Router:       NoneRouter{},
-		Stacker:      NoneStacker{},
-		Coordination: NoopCoordination{},
+		Multiplexer: NoneMultiplexer{},
+		Infra:       NoneInfra{},
+		Router:      NoneRouter{},
+		Stacker:     NoneStacker{},
 	}
 
 	switch p.Multiplexer {

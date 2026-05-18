@@ -60,17 +60,3 @@ func Resolve(slug, worktreeRoot, pattern string) Identity {
 		Path: filepath.Join(worktreeRoot, dir),
 	}
 }
-
-// IdentityFromPath derives an Identity from an existing worktree path. ok is
-// false when the path's directory name does not match the naming pattern.
-func IdentityFromPath(path, pattern string) (id Identity, ok bool) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return Identity{}, false
-	}
-	slug, ok := SlugFromDir(filepath.Base(abs), pattern)
-	if !ok {
-		return Identity{}, false
-	}
-	return Identity{Slug: slug, Dir: filepath.Base(abs), Path: abs}, true
-}
